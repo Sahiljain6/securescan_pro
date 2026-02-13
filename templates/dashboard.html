@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h2>SecureScan Dashboard</h2>
+
+    <p>Total Scans: {{ total_scans }}</p>
+
+    <form action="/scan" method="POST">
+        <input name="url" placeholder="Enter URL" required>
+        <button type="submit">Scan</button>
+    </form>
+
+    <canvas id="chart" width="400" height="200"></canvas>
+
+    <script>
+        new Chart(document.getElementById("chart"), {
+            type: "bar",
+            data: {
+                labels: ["SQLi", "XSS", "Headers"],
+                datasets: [{
+                    label: "Detected Issues",
+                    data: [3, 2, 1]
+                }]
+            }
+        });
+    </script>
+
+    <br><br>
+    <a href="/logout">Logout</a>
+</body>
+</html>
