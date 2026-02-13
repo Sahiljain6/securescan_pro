@@ -1,0 +1,112 @@
+/* -------- GLOBAL -------- */
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+    color: #ffffff;
+    text-align: center;
+}
+
+h1, h2, h3 {
+    margin-top: 30px;
+    letter-spacing: 1px;
+}
+
+/* -------- CONTAINER -------- */
+
+.container {
+    background: rgba(255, 255, 255, 0.05);
+    width: 80%;
+    max-width: 700px;
+    margin: 40px auto;
+    padding: 30px;
+    border-radius: 15px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+/* -------- INPUTS -------- */
+
+input {
+    width: 80%;
+    padding: 12px;
+    margin: 10px 0;
+    border-radius: 8px;
+    border: none;
+    outline: none;
+    font-size: 16px;
+}
+
+/* -------- BUTTONS -------- */
+
+button {
+    padding: 12px 25px;
+    margin-top: 10px;
+    border-radius: 8px;
+    border: none;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    background: #ff4b2b;
+    color: white;
+    transition: 0.3s;
+}
+
+button:hover {
+    background: #ff416c;
+    transform: scale(1.05);
+}
+
+/* -------- LINKS -------- */
+
+a {
+    color: #00f2fe;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* -------- TABLE -------- */
+
+table {
+    width: 90%;
+    margin: 20px auto;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 10px;
+    border-bottom: 1px solid #ffffff33;
+}
+
+th {
+    background: #ff4b2b;
+}
+
+/* -------- RESULT COLORS -------- */
+
+.safe {
+    color: #00ff88;
+    font-weight: bold;
+}
+
+.risk {
+    color: #ff3b3b;
+    font-weight: bold;
+}
+
+/* -------- CARD STYLE -------- */
+
+.card {
+    background: rgba(255,255,255,0.08);
+    padding: 20px;
+    margin: 20px auto;
+    border-radius: 12px;
+    width: 80%;
+    max-width: 600px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.4);
+}
