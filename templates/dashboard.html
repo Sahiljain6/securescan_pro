@@ -1,35 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Dashboard</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureScan Pro | Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h2>SecureScan Dashboard</h2>
+    <main class="panel">
+        <div class="header-row">
+            <h1>Dashboard</h1>
+            <a class="text-link" href="{{ url_for('logout') }}">Logout</a>
+        </div>
+        <p class="subtitle">Welcome, {{ username }}. Scan URLs for phishing risk and common open ports.</p>
 
-    <p>Total Scans: {{ total_scans }}</p>
+        <form method="post" class="form-card">
+            <label for="url">Target URL</label>
+            <input id="url" name="url" type="text" placeholder="https://example.com/login" required>
 
-    <form action="/scan" method="POST">
-        <input name="url" placeholder="Enter URL" required>
-        <button type="submit">Scan</button>
-    </form>
+            <label for="host">Host for port scan (optional)</label>
+            <input id="host" name="host" type="text" placeholder="example.com">
 
-    <canvas id="chart" width="400" height="200"></canvas>
-
-    <script>
-        new Chart(document.getElementById("chart"), {
-            type: "bar",
-            data: {
-                labels: ["SQLi", "XSS", "Headers"],
-                datasets: [{
-                    label: "Detected Issues",
-                    data: [3, 2, 1]
-                }]
-            }
-        });
-    </script>
-
-    <br><br>
-    <a href="/logout">Logout</a>
+            <button type="submit">Run Secure Scan</button>
+        </form>
+    </main>
 </body>
 </html>
