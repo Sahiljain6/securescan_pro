@@ -1,18 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Scan Result</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureScan Pro | Result</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h2>Results for {{ url }}</h2>
+    <main class="panel">
+        <h1>Scan Result</h1>
 
-    <p><b>SQL Injection:</b> {{ results.sql }}</p>
-    <p><b>XSS:</b> {{ results.xss }}</p>
-    <p><b>Security Headers:</b> {{ results.headers }}</p>
-    <p><b>Open Ports:</b> {{ ports }}</p>
-    <p><b>ML Check:</b> {{ ml }}</p>
+        <section class="result-card">
+            <p><strong>URL:</strong> {{ url }}</p>
+            <p><strong>Classification:</strong> <span class="badge {{ result|lower }}">{{ result }}</span></p>
+            <p><strong>Probability Score:</strong> {{ probability }}%</p>
+            <p><strong>Open Ports:</strong>
+                {% if open_ports %}
+                    {{ open_ports | join(', ') }}
+                {% else %}
+                    None detected on common ports
+                {% endif %}
+            </p>
+        </section>
 
-    <a href="/report/{{ url }}">Download PDF Report</a><br><br>
-    <a href="/dashboard">Back to Dashboard</a>
+        <a class="text-link" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
+    </main>
 </body>
 </html>
