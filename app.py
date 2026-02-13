@@ -1,124 +1,90 @@
-from flask import Flask, render_template, request, redirect, send_file
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
-import sqlite3
 import os
-
-from scanner import scan_website
+from flask import Flask, render_template, request, redirect, session
+from flask_sqlalchemy import SQLAlchemy
+from scanner import scan_url
 from port_scanner import scan_ports
 from ml_model import predict_input
-
-from reportlab.platypus import SimpleDocTemplate, Paragraph
-from reportlab.lib.styles import getSampleStyleSheet
 
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
 
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = "login"
+# ---------- DATABASE CONFIG ----------
+database_url = os.environ.get("DATABASE_URL")
 
-# ---------------- LOGIN SYSTEM ---------------- #
+if database_url:
+    # Fix for Render PostgreSQL URL
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+else:
+    # Local fallback
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///local.db"
 
-class User(UserMixin):
-    def __init__(self, id):
-        self.id = id
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-users = {"admin": {"password": "admin123"}}
+db = SQLAlchemy(app)
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User(user_id)
+# ---------- DATABASE MODEL ----------
+class ScanResult(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    url = db.Column(db.String(300))
+    vulnerabilities = db.Column(db.Text)
+    ports = db.Column(db.Text)
+    ml_prediction = db.Column(db.String(100))
 
-# ---------------- DATABASE ---------------- #
+# Auto create tables
+with app.app_context():
+    db.create_all()
 
-def init_db():
-    conn = sqlite3.connect("database.db")
-    c = conn.cursor()
-    c.execute("""
-        CREATE TABLE IF NOT EXISTS scans (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            url TEXT,
-            sql_result TEXT,
-            xss_result TEXT,
-            header_result TEXT
-        )
-    """)
-    conn.commit()
-    conn.close()
+# ---------- ROUTES ----------
+@app.route("/")
+def home():
+    return redirect("/login")
 
-# ---------------- ROUTES ---------------- #
-
-@app.route("/", methods=["GET", "POST"])
+@app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-
-        if username in users and users[username]["password"] == password:
-            login_user(User(username))
+        if request.form["username"] == "admin" and request.form["password"] == "admin123":
+            session["admin"] = True
             return redirect("/dashboard")
-
     return render_template("login.html")
 
+@app.route("/dashboard", methods=["GET", "POST"])
+def dashboard():
+    if "admin" not in session:
+        return redirect("/login")
+
+    if request.method == "POST":
+        url = request.form["url"]
+
+        vulnerabilities = scan_url(url)
+        ports = scan_ports(url)
+        ml_result = predict_input(url)
+
+        new_scan = ScanResult(
+            url=url,
+            vulnerabilities=str(vulnerabilities),
+            ports=str(ports),
+            ml_prediction=ml_result
+        )
+
+        db.session.add(new_scan)
+        db.session.commit()
+
+        return render_template("result.html",
+                               url=url,
+                               vulnerabilities=vulnerabilities,
+                               ports=ports,
+                               ml_result=ml_result)
+
+    scans = ScanResult.query.order_by(ScanResult.id.desc()).all()
+    return render_template("dashboard.html", scans=scans)
 
 @app.route("/logout")
-@login_required
 def logout():
-    logout_user()
-    return redirect("/")
-
-
-@app.route("/dashboard")
-@login_required
-def dashboard():
-    conn = sqlite3.connect("database.db")
-    c = conn.cursor()
-    c.execute("SELECT COUNT(*) FROM scans")
-    total_scans = c.fetchone()[0]
-    conn.close()
-
-    return render_template("dashboard.html", total_scans=total_scans)
-
-
-@app.route("/scan", methods=["POST"])
-@login_required
-def scan():
-    url = request.form["url"]
-
-    results = scan_website(url)
-    ports = scan_ports(url.replace("http://", "").replace("https://", ""))
-    ml_check = predict_input(url)
-
-    conn = sqlite3.connect("database.db")
-    c = conn.cursor()
-    c.execute("INSERT INTO scans (url, sql_result, xss_result, header_result) VALUES (?, ?, ?, ?)",
-              (url, results["sql"], results["xss"], results["headers"]))
-    conn.commit()
-    conn.close()
-
-    return render_template("result.html",
-                           results=results,
-                           ports=ports,
-                           ml=ml_check,
-                           url=url)
-
-
-@app.route("/report/<path:url>")
-@login_required
-def report(url):
-    filename = "report.pdf"
-    doc = SimpleDocTemplate(filename)
-    styles = getSampleStyleSheet()
-    elements = []
-
-    elements.append(Paragraph("SecureScan Report", styles["Title"]))
-    elements.append(Paragraph("Target: " + url, styles["Normal"]))
-
-    doc.build(elements)
-
-    return send_file(filename, as_attachment=True)
-
+    session.clear()
+    return redirect("/login")
 
 if __name__ == "__main__":
-    init_db()
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
