@@ -1,37 +1,53 @@
 import requests
+import re
 
-def test_sql(url):
-    payload = "' OR '1'='1"
+def is_valid_url(url):
+    """
+    Validate URL format
+    """
+    regex = re.compile(
+        r'^(http|https)://'  # http:// or https://
+        r'([a-zA-Z0-9.-]+)'  # domain
+        r'(\.[a-zA-Z]{2,})'  # .com, .org etc
+        r'(:[0-9]+)?'        # optional port
+        r'(\/.*)?$'          # path
+    )
+    return re.match(regex, url)
+
+
+def scan_url(url):
+    """
+    Scan URL and return security result
+    """
+
+    # Check if URL is empty
+    if not url:
+        return "Invalid URL ❌"
+
+    # Add https if missing
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = "https://" + url
+
+    # Validate URL format
+    if not is_valid_url(url):
+        return "Invalid URL Format ❌"
+
     try:
-        r = requests.get(url + payload, timeout=3)
-        if "sql" in r.text.lower():
-            return "⚠ High Risk"
-        return "✔ Safe"
-    except:
-        return "Error"
+        response = requests.get(url, timeout=5)
 
-def test_xss(url):
-    payload = "<script>alert('XSS')</script>"
-    try:
-        r = requests.get(url + payload, timeout=3)
-        if payload in r.text:
-            return "⚠ High Risk"
-        return "✔ Safe"
-    except:
-        return "Error"
+        # Safe if status 200
+        if response.status_code == 200:
+            return "Safe ✅"
 
-def check_headers(url):
-    try:
-        r = requests.get(url, timeout=3)
-        if "Content-Security-Policy" not in r.headers:
-            return "⚠ Missing Security Headers"
-        return "✔ Secure"
-    except:
-        return "Error"
+        # Suspicious if other status
+        else:
+            return "Suspicious ⚠️"
 
-def scan_website(url):
-    return {
-        "sql": test_sql(url),
-        "xss": test_xss(url),
-        "headers": check_headers(url)
-    }
+    except requests.exceptions.Timeout:
+        return "Timeout – Possibly Suspicious ⚠️"
+
+    except requests.exceptions.ConnectionError:
+        return "Connection Failed – Malicious ❌"
+
+    except Exception:
+        return "Error Occurred ❌"
