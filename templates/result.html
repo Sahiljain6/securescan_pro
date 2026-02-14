@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureScan Pro v2 | Scan Result</title>
+    <title>SecureScan Pro v4 | Scan Result</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -27,39 +27,36 @@
                 </article>
 
                 <article class="card">
-                    <h2>CVSS Score</h2>
-                    <p class="cvss cvss-{{ cvss_severity|lower }}">{{ cvss_score }} / 10 ({{ cvss_severity }})</p>
+                    <h2>Risk Posture</h2>
+                    <p class="cvss cvss-{{ cvss_severity|lower }}">CVSS {{ cvss_score }} / 10 ({{ cvss_severity }})</p>
                     <p class="muted">{{ cvss_method }}</p>
-                    <a class="btn btn-ghost" href="{{ url_for('report_view') }}">Open Full Report Page</a>
+                    <p class="muted">Average confidence: {{ confidence_average }}%</p>
                 </article>
 
                 <article class="card full-width">
-                    <h2>Multi-Stage OWASP Breakdown</h2>
+                    <h2>Control Domain Breakdown</h2>
+                    <canvas id="owaspChart" data-domains='{{ domain_breakdown|tojson }}'></canvas>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Structured OWASP Top 5 Findings</h2>
                     <div class="finding-list">
-                        {% for stage in owasp_stages %}
+                        {% for finding in owasp_findings %}
                         <div class="finding-item">
                             <div class="finding-row">
-                                <strong>{{ stage.stage }}</strong>
+                                <strong>{{ finding.domain }}</strong>
+                                <span class="badge {{ finding.severity|lower }}">{{ finding.severity }}</span>
                             </div>
-                            <pre class="stage-json">{{ stage | tojson(indent=2) }}</pre>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </article>
-
-                <article class="card full-width">
-                    <h2>Structured Findings</h2>
-                    <div class="finding-list" id="finding-list">
-                        {% for finding in owasp_findings %}
-                        <div class="finding-item" data-confidence="{{ finding.confidence }}" data-score="{{ finding.exploitability_score }}">
-                            <div class="finding-row">
-                                <strong>{{ finding.vulnerability }}</strong>
-                                <span class="badge {{ 'safe' if finding.exploitability_score < 1.5 else 'malicious' }}">
-                                    {{ 'Informational' if finding.exploitability_score < 1.5 else 'Issue Detected' }}
-                                </span>
-                            </div>
-                            <p>{{ finding.explanation }}</p>
-                            <p class="muted">Severity: {{ finding.severity }} • Exploitability: {{ finding.exploitability_score }} / 10 • Mitigation Present: {{ 'Yes' if finding.mitigation_present else 'No' }}</p>
+                            <p>{{ finding.summary }}</p>
+                            <p class="muted">Risk = {{ finding.risk_output.risk }} • Confidence {{ finding.confidence }}% • FP Suppression {{ finding.false_positive_controls.suppression_factor }}</p>
+                            <p class="muted">Equation: {{ finding.risk_equation }}</p>
+                            <pre class="stage-json">{{ finding.risk_inputs | tojson(indent=2) }}</pre>
+                            <h4>Evidence Summary</h4>
+                            <ul>
+                                {% for ev in finding.evidence %}
+                                <li>{{ ev.name }} (score={{ ev.score }}, reliability={{ ev.reliability }}, weight={{ ev.weight }})</li>
+                                {% endfor %}
+                            </ul>
                             <div class="confidence-meter-wrap">
                                 <div class="confidence-meter-label">Confidence {{ finding.confidence }}%</div>
                                 <div class="confidence-meter"><span style="width: {{ finding.confidence }}%"></span></div>
@@ -67,6 +64,13 @@
                         </div>
                         {% endfor %}
                     </div>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Multi-Stage Validation Trace</h2>
+                    {% for stage in owasp_stages %}
+                    <pre class="stage-json">{{ stage | tojson(indent=2) }}</pre>
+                    {% endfor %}
                 </article>
 
                 <article class="card">
@@ -78,14 +82,10 @@
                     {% endif %}
                 </article>
 
-                <article class="card">
-                    <h2>Findings Chart</h2>
-                    <canvas id="owaspChart" data-findings='{{ owasp_findings|tojson }}'></canvas>
-                </article>
-
                 <article class="card full-width">
                     <h2>Executive Summary</h2>
                     <p>{{ executive_summary }}</p>
+                    <a class="btn btn-ghost" href="{{ url_for('report_view') }}">Open Full Report Page</a>
                 </article>
             </div>
         </section>

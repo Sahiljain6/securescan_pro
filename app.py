@@ -28,6 +28,7 @@ class ScanRecord(db.Model):
     phishing_probability = db.Column(db.Float, nullable=False)
     cvss_score = db.Column(db.Float, nullable=False)
     cvss_severity = db.Column(db.String(32), nullable=False)
+    confidence_avg = db.Column(db.Float, nullable=False, default=0.0)
 
 
 class Config:
@@ -155,8 +156,8 @@ def create_app() -> Flask:
 
             executive_summary = (
                 f"The target {normalized} was classified as {phishing_result} with a phishing probability of "
-                f"{round(phishing_probability * 100, 2)}%. {sum(1 for f in findings if f.get('exploitability_score', 0) >= 1.5)} out of "
-                f"{len(findings)} OWASP-aligned findings showed actionable risk. "
+                f"{round(phishing_probability * 100, 2)}%. The OWASP Top 5 assessment produced {len(findings)} domain-level "
+                f"findings with an average confidence of {owasp_scan['confidence_average']}%. "
                 f"Overall risk posture is {cvss['severity']} (CVSS {cvss['score']})."
             )
 
@@ -168,6 +169,7 @@ def create_app() -> Flask:
                     phishing_probability=phishing_probability,
                     cvss_score=cvss["score"],
                     cvss_severity=cvss["severity"],
+                    confidence_avg=owasp_scan["confidence_average"],
                 )
             )
             db.session.commit()
@@ -180,6 +182,8 @@ def create_app() -> Flask:
                 "phishing_probability": round(phishing_probability * 100, 2),
                 "owasp_findings": findings,
                 "owasp_stages": owasp_scan["stages"],
+                "domain_breakdown": owasp_scan["domain_breakdown"],
+                "confidence_average": owasp_scan["confidence_average"],
                 "cvss_score": cvss["score"],
                 "cvss_severity": cvss["severity"],
                 "cvss_method": cvss["method"],
