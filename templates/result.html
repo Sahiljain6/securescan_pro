@@ -3,44 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureScan Pro | Result</title>
+    <title>SecureScan Pro v2 | Scan Result</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="background-glow"></div>
     <main class="container">
         <section class="glass-card">
             <header class="top-bar">
-                <h1>Scan Report</h1>
-                <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+                <h1>Result: {{ url }}</h1>
+                <div class="actions">
+                    <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Dashboard</a>
+                    <a class="btn btn-primary" href="{{ url_for('download_report') }}">Download PDF Report</a>
+                </div>
             </header>
 
-            <section class="result-grid">
+            <div class="result-grid">
                 <article class="card">
-                    <h2>Threat Classification</h2>
-                    <p class="result-url">{{ url }}</p>
-                    <p>
-                        Verdict:
-                        <span class="badge {{ result|lower }}">{{ result }}</span>
-                    </p>
-                    <p>Risk Score: <strong>{{ probability }}%</strong></p>
+                    <h2>Phishing Detection</h2>
+                    <p>Verdict: <span class="badge {{ phishing_result|lower }}">{{ phishing_result }}</span></p>
+                    <p>Probability: <strong>{{ phishing_probability }}%</strong></p>
                 </article>
 
                 <article class="card">
-                    <h2>Port Exposure</h2>
+                    <h2>CVSS Score</h2>
+                    <p class="cvss cvss-{{ cvss_severity|lower }}">{{ cvss_score }} / 10 ({{ cvss_severity }})</p>
+                    <a class="btn btn-ghost" href="{{ url_for('report_view') }}">Open Full Report Page</a>
+                </article>
+
+                <article class="card full-width">
+                    <h2>OWASP Findings</h2>
+                    <div class="finding-list">
+                        {% for finding in owasp_findings %}
+                        <div class="finding-item">
+                            <strong>{{ finding.name }}</strong>
+                            <span class="badge {{ 'malicious' if finding.vulnerable else 'safe' }}">
+                                {{ 'Issue Detected' if finding.vulnerable else 'No Issue' }}
+                            </span>
+                            <p class="muted">{{ finding.details }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Open Ports</h2>
                     {% if open_ports %}
-                        <p class="muted">Open common ports detected:</p>
-                        <ul class="port-list">
-                            {% for port in open_ports %}
-                                <li>Port {{ port }}</li>
-                            {% endfor %}
-                        </ul>
+                    <p>{{ open_ports|join(', ') }}</p>
                     {% else %}
-                        <p class="muted">No common open ports were detected on the host.</p>
+                    <p class="muted">No common exposed ports detected.</p>
                     {% endif %}
                 </article>
-            </section>
+            </div>
         </section>
     </main>
+    <script src="{{ url_for('static', filename='charts.js') }}"></script>
 </body>
 </html>

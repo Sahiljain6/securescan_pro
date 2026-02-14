@@ -3,34 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureScan Pro | Login</title>
+    <title>SecureScan Pro v2 | Login</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="background-glow"></div>
     <main class="container auth-container">
-        <section class="glass-card auth-card">
-            <h1>SecureScan Pro</h1>
-            <p class="subtitle">Production-ready phishing and exposure intelligence platform.</p>
-
+        <section class="glass-card">
+            <h1>SecureScan Pro v2</h1>
+            <p class="muted">Enterprise web security scanning platform.</p>
             {% with messages = get_flashed_messages(with_categories=true) %}
-              {% if messages %}
+                {% if messages %}
                 <div class="flash-stack">
-                  {% for category, message in messages %}
+                    {% for category, message in messages %}
                     <div class="flash {{ category }}">{{ message }}</div>
-                  {% endfor %}
+                    {% endfor %}
                 </div>
-              {% endif %}
+                {% endif %}
             {% endwith %}
-
-            <form method="post" class="form-grid" autocomplete="off">
-                <label for="username">Username</label>
-                <input id="username" name="username" type="text" required>
-
-                <label for="password">Password</label>
-                <input id="password" name="password" type="password" required>
-
-                <button type="submit" class="btn btn-primary">Sign In</button>
+            <form method="POST" class="form-grid">
+                <label>Username</label>
+                <input name="username" required>
+                <label>Password</label>
+                <input type="password" name="password" required>
+                <button type="submit" class="btn btn-primary">Login</button>
             </form>
         </section>
     </main>

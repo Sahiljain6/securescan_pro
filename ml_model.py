@@ -1,46 +1,69 @@
-from pathlib import Path
+from __future__ import annotations
 
-import joblib
-from sklearn.ensemble import RandomForestClassifier
-
-MODEL_PATH = Path(__file__).with_name("model.pkl")
-
-
-def _training_data():
-    samples = [
-        [18, 2, 0, 0, 1, 0],
-        [23, 2, 0, 0, 1, 1],
-        [30, 3, 0, 0, 1, 2],
-        [72, 5, 1, 1, 0, 8],
-        [68, 6, 1, 1, 0, 7],
-        [60, 5, 1, 1, 0, 6],
-        [54, 5, 1, 1, 0, 5],
-        [24, 2, 0, 0, 1, 1],
-        [52, 4, 1, 0, 0, 4],
-        [61, 5, 1, 1, 0, 7],
-        [27, 2, 0, 0, 1, 2],
-        [59, 6, 1, 1, 0, 8],
-    ]
-    labels = [0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 1]
-    return samples, labels
+import math
+import re
+from dataclasses import dataclass
+from urllib.parse import urlparse
 
 
-def _train_and_save_model() -> RandomForestClassifier:
-    features, labels = _training_data()
-    model = RandomForestClassifier(n_estimators=150, random_state=42)
-    model.fit(features, labels)
-    joblib.dump(model, MODEL_PATH)
-    return model
+@dataclass
+class URLFeatures:
+    length: int
+    has_ip: int
+    num_dots: int
+    has_at: int
+    has_https: int
+    suspicious_words: int
 
 
-def get_model() -> RandomForestClassifier:
-    if not MODEL_PATH.exists():
-        return _train_and_save_model()
+SUSPICIOUS_KEYWORDS = {
+    "login",
+    "verify",
+    "account",
+    "secure",
+    "update",
+    "banking",
+    "password",
+    "confirm",
+    "token",
+}
 
-    try:
-        model = joblib.load(MODEL_PATH)
-        if not hasattr(model, "predict_proba"):
-            return _train_and_save_model()
-        return model
-    except Exception:
-        return _train_and_save_model()
+
+class LightweightPhishingModel:
+    """A simple deterministic scoring model suitable for demo/lab environments."""
+
+    def _extract(self, url: str) -> URLFeatures:
+        parsed = urlparse(url)
+        hostname = parsed.netloc.lower()
+        path = parsed.path.lower()
+        full = f"{hostname}{path}"
+
+        has_ip = int(bool(re.search(r"\b(?:\d{1,3}\.){3}\d{1,3}\b", hostname)))
+        has_at = int("@" in url)
+        suspicious_words = sum(1 for word in SUSPICIOUS_KEYWORDS if word in full)
+
+        return URLFeatures(
+            length=len(url),
+            has_ip=has_ip,
+            num_dots=hostname.count("."),
+            has_at=has_at,
+            has_https=int(parsed.scheme == "https"),
+            suspicious_words=suspicious_words,
+        )
+
+    def predict_proba(self, url: str) -> float:
+        f = self._extract(url)
+        raw_score = (
+            0.015 * f.length
+            + 1.6 * f.has_ip
+            + 0.45 * f.num_dots
+            + 1.0 * f.has_at
+            - 1.2 * f.has_https
+            + 0.8 * f.suspicious_words
+            - 3.0
+        )
+        probability = 1 / (1 + math.exp(-raw_score))
+        return max(0.01, min(0.99, probability))
+
+
+model = LightweightPhishingModel()
