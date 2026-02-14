@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from io import BytesIO
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 
@@ -13,21 +13,27 @@ def generate_pdf_report(payload: dict) -> bytes:
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4, title="SecureScan Pro v2 Report")
     styles = getSampleStyleSheet()
-    story = []
+    styles.add(ParagraphStyle(name="BodySmall", parent=styles["Normal"], fontSize=9, leading=12))
 
-    story.append(Paragraph("SecureScan Pro v2 - Vulnerability Assessment Report", styles["Title"]))
-    story.append(Spacer(1, 12))
-    story.append(Paragraph(f"Generated: {datetime.utcnow().isoformat()}Z", styles["Normal"]))
+    story = [Paragraph("SecureScan Pro v2 — Enterprise Web Security Assessment", styles["Title"]), Spacer(1, 10)]
+    story.append(Paragraph(f"Timestamp: {payload.get('timestamp', datetime.now(timezone.utc).isoformat())}", styles["Normal"]))
     story.append(Paragraph(f"Target URL: {payload['url']}", styles["Normal"]))
     story.append(Paragraph(f"Phishing Verdict: {payload['phishing_result']} ({payload['phishing_probability']}%)", styles["Normal"]))
+    story.append(Paragraph(f"CVSS v3.1: {payload['cvss_score']} ({payload['cvss_severity']})", styles["Normal"]))
     story.append(Spacer(1, 14))
 
     story.append(Paragraph("OWASP Findings", styles["Heading2"]))
-    finding_rows = [["Control", "Status", "Details"]]
+    finding_rows = [["Control", "Status", "Confidence", "Details"]]
     for item in payload["owasp_findings"]:
-        status = "Issue Detected" if item["vulnerable"] else "No Issue"
-        finding_rows.append([item["name"], status, item["details"]])
-    findings_table = Table(finding_rows, colWidths=[165, 95, 250])
+        finding_rows.append(
+            [
+                item["name"],
+                "Issue Detected" if item["vulnerable"] else "No Issue",
+                item.get("confidence", "N/A"),
+                item["details"],
+            ]
+        )
+    findings_table = Table(finding_rows, colWidths=[130, 90, 80, 220])
     findings_table.setStyle(
         TableStyle(
             [
@@ -35,21 +41,24 @@ def generate_pdf_report(payload: dict) -> bytes:
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
                 ("GRID", (0, 0), (-1, -1), 0.6, colors.HexColor("#9aa5ce")),
                 ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
             ]
         )
     )
-    story.append(findings_table)
-    story.append(Spacer(1, 14))
+    story.extend([findings_table, Spacer(1, 12)])
 
-    story.append(Paragraph("Risk Summary", styles["Heading2"]))
-    story.append(Paragraph(f"CVSS Score: {payload['cvss_score']} ({payload['cvss_severity']})", styles["Normal"]))
-    open_ports = ", ".join(str(p) for p in payload["open_ports"]) if payload["open_ports"] else "None detected"
-    story.append(Paragraph(f"Open Ports: {open_ports}", styles["Normal"]))
-    story.append(Spacer(1, 12))
+    open_ports = ", ".join(str(port) for port in payload.get("open_ports", [])) or "None detected"
+    story.append(Paragraph("Network Exposure", styles["Heading2"]))
+    story.append(Paragraph(f"Open common ports: {open_ports}", styles["Normal"]))
+    story.append(Spacer(1, 10))
+
+    story.append(Paragraph("Executive Summary", styles["Heading2"]))
+    story.append(Paragraph(payload.get("executive_summary", "No executive summary generated."), styles["BodySmall"]))
+    story.append(Spacer(1, 10))
 
     story.append(Paragraph("Recommendations", styles["Heading2"]))
-    for rec in payload["recommendations"]:
-        story.append(Paragraph(f"• {rec}", styles["Normal"]))
+    for recommendation in payload.get("recommendations", []):
+        story.append(Paragraph(f"• {recommendation}", styles["BodySmall"]))
 
     doc.build(story)
     buffer.seek(0)

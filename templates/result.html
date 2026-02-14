@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SecureScan Pro v2 | Scan Result</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <main class="container">
@@ -22,36 +23,57 @@
                     <h2>Phishing Detection</h2>
                     <p>Verdict: <span class="badge {{ phishing_result|lower }}">{{ phishing_result }}</span></p>
                     <p>Probability: <strong>{{ phishing_probability }}%</strong></p>
+                    <p class="muted">Scan time: {{ timestamp }}</p>
                 </article>
 
                 <article class="card">
                     <h2>CVSS Score</h2>
                     <p class="cvss cvss-{{ cvss_severity|lower }}">{{ cvss_score }} / 10 ({{ cvss_severity }})</p>
+                    <p class="muted">{{ cvss_method }}</p>
                     <a class="btn btn-ghost" href="{{ url_for('report_view') }}">Open Full Report Page</a>
                 </article>
 
                 <article class="card full-width">
-                    <h2>OWASP Findings</h2>
-                    <div class="finding-list">
+                    <h2>OWASP Breakdown</h2>
+                    <div class="legend">
+                        <span class="confidence high">High Confidence</span>
+                        <span class="confidence medium">Medium Confidence</span>
+                        <span class="confidence low">Low Confidence</span>
+                        <span class="confidence informational">Informational</span>
+                    </div>
+                    <div class="finding-list" id="finding-list">
                         {% for finding in owasp_findings %}
-                        <div class="finding-item">
-                            <strong>{{ finding.name }}</strong>
-                            <span class="badge {{ 'malicious' if finding.vulnerable else 'safe' }}">
-                                {{ 'Issue Detected' if finding.vulnerable else 'No Issue' }}
-                            </span>
+                        <div class="finding-item" data-vulnerable="{{ '1' if finding.vulnerable else '0' }}" data-confidence="{{ finding.confidence }}">
+                            <div class="finding-row">
+                                <strong>{{ finding.name }}</strong>
+                                <span class="badge {{ 'malicious' if finding.vulnerable else 'safe' }}">
+                                    {{ 'Issue Detected' if finding.vulnerable else 'No Issue' }}
+                                </span>
+                            </div>
                             <p class="muted">{{ finding.details }}</p>
+                            <span class="confidence {{ finding.confidence|lower }}">{{ finding.confidence }} confidence</span>
                         </div>
                         {% endfor %}
                     </div>
                 </article>
 
-                <article class="card full-width">
+                <article class="card">
                     <h2>Open Ports</h2>
                     {% if open_ports %}
                     <p>{{ open_ports|join(', ') }}</p>
                     {% else %}
                     <p class="muted">No common exposed ports detected.</p>
                     {% endif %}
+                </article>
+
+                <article class="card">
+                    <h2>Findings Chart</h2>
+                    <canvas id="owaspChart" data-findings='{{ owasp_findings|tojson }}'></canvas>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Executive Summary</h2>
+                    <p>{{ executive_summary }}</p>
                 </article>
             </div>
         </section>

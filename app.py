@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import os
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from functools import wraps
+from hmac import compare_digest
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
-from flask import Flask, Response, flash, redirect, render_template, request, session, url_for
+from flask import Flask, Response, abort, flash, redirect, render_template, request, session, url_for
 from flask_sqlalchemy import SQLAlchemy
 
 from cvss import score_findings
 from owasp_scanner import run_owasp_scan
 from port_scanner import scan_ports
-from report_generator import generate_pdf_report
 from scanner import scan_url
 
 load_dotenv()
@@ -37,6 +37,7 @@ class Config:
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = os.getenv("FLASK_ENV", "production") == "production"
+    SESSION_COOKIE_NAME = "securescan_sid"
     PERMANENT_SESSION_LIFETIME = timedelta(hours=4)
 
 
@@ -59,6 +60,12 @@ def _normalize_url(raw_url: str) -> str:
 def _valid_url(url: str) -> bool:
     parsed = urlparse(url)
     return bool(parsed.scheme in {"http", "https"} and parsed.netloc)
+
+
+def _localhost_only() -> bool:
+    host = (request.host or "").split(":")[0]
+    remote = request.remote_addr or ""
+    return host in {"127.0.0.1", "localhost"} and remote in {"127.0.0.1", "::1"}
 
 
 def login_required(fn):
@@ -97,10 +104,12 @@ def create_app() -> Flask:
             password = request.form.get("password", "")
             env_user = os.getenv("ADMIN_USERNAME", "admin")
             env_pass = os.getenv("ADMIN_PASSWORD", "admin123")
-            if username == env_user and password == env_pass:
+
+            if compare_digest(username, env_user) and compare_digest(password, env_pass):
                 session.clear()
                 session["auth"] = True
                 session["username"] = username
+                session["session_nonce"] = os.urandom(16).hex()
                 session.permanent = True
                 return redirect(url_for("dashboard"))
             flash("Invalid credentials.", "error")
@@ -120,6 +129,9 @@ def create_app() -> Flask:
             target = request.form.get("url", "")
             lab_mode = request.form.get("lab_mode") == "on"
             if lab_mode:
+                if not _localhost_only():
+                    flash("Lab mode is restricted to localhost only.", "error")
+                    return redirect(url_for("dashboard"))
                 target = LAB_TARGETS.get(request.form.get("lab_target", ""), target)
 
             normalized = _normalize_url(target)
@@ -133,12 +145,19 @@ def create_app() -> Flask:
             open_ports = scan_ports(normalized)
 
             recommendations = [
-                "Enforce strict input validation and output encoding.",
-                "Enable and tune a Web Application Firewall (WAF).",
-                "Implement anti-CSRF tokens on state-changing forms.",
-                "Harden transport with TLS and modern security headers.",
-                "Continuously scan and patch exposed services.",
+                "Validate and sanitize all input server-side and apply strict contextual output encoding.",
+                "Harden browser trust boundaries with CSP, X-Frame-Options, and strict transport security.",
+                "Implement anti-CSRF tokens and same-site cookie protections on all state-changing requests.",
+                "Continuously patch dependencies and externally exposed services identified in port scans.",
+                "Operationalize continuous monitoring with periodic authenticated and passive scanning cycles.",
             ]
+
+            executive_summary = (
+                f"The target {normalized} was classified as {phishing_result} with a phishing probability of "
+                f"{round(phishing_probability * 100, 2)}%. {sum(1 for f in findings if f.get('vulnerable'))} out of "
+                f"{len(findings)} OWASP-aligned checks indicated potential risk. "
+                f"Overall risk posture is {cvss['severity']} (CVSS {cvss['score']})."
+            )
 
             db.session.add(
                 ScanRecord(
@@ -152,14 +171,18 @@ def create_app() -> Flask:
             )
             db.session.commit()
 
+            timestamp = datetime.now(timezone.utc).isoformat()
             result_payload = {
                 "url": normalized,
+                "timestamp": timestamp,
                 "phishing_result": phishing_result,
                 "phishing_probability": round(phishing_probability * 100, 2),
                 "owasp_findings": findings,
                 "cvss_score": cvss["score"],
                 "cvss_severity": cvss["severity"],
+                "cvss_method": cvss["method"],
                 "open_ports": open_ports,
+                "executive_summary": executive_summary,
                 "recommendations": recommendations,
             }
             session["last_scan"] = result_payload
@@ -185,6 +208,8 @@ def create_app() -> Flask:
             flash("Run a scan first.", "warning")
             return redirect(url_for("dashboard"))
 
+        from report_generator import generate_pdf_report
+
         pdf_bytes = generate_pdf_report(payload)
         return Response(
             pdf_bytes,
@@ -194,18 +219,24 @@ def create_app() -> Flask:
 
     @app.get("/lab/sqli")
     def lab_sqli():
+        if not _localhost_only():
+            abort(403)
         user = request.args.get("user", "demo")
-        if "OR" in user.upper():
+        if "OR" in user.upper() or "'" in user:
             return "SQL syntax error near 'OR 1=1'", 200
         return f"Lab user profile: {user}", 200
 
     @app.get("/lab/xss")
     def lab_xss():
+        if not _localhost_only():
+            abort(403)
         q = request.args.get("q", "")
         return f"<html><body><div>Echo: {q}</div></body></html>", 200
 
     @app.route("/lab/csrf", methods=["GET", "POST"])
     def lab_csrf():
+        if not _localhost_only():
+            abort(403)
         return """
         <html><body>
             <form method='post' action='/lab/csrf'>

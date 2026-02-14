@@ -12,7 +12,7 @@
             <header class="top-bar">
                 <div>
                     <h1>SecureScan Pro v2 Dashboard</h1>
-                    <p class="muted">Phishing, OWASP, CVSS, and network exposure analysis.</p>
+                    <p class="muted">Enterprise phishing, OWASP, CVSS, and network exposure analysis.</p>
                 </div>
                 <a href="{{ url_for('logout') }}" class="btn btn-ghost">Logout</a>
             </header>
@@ -35,10 +35,10 @@
                         <input name="url" placeholder="https://example.com" required>
 
                         <label class="toggle-row">
-                            <input type="checkbox" name="lab_mode"> Enterprise Lab Mode
+                            <input type="checkbox" name="lab_mode"> Lab Mode (localhost safe demos)
                         </label>
 
-                        <label>Lab Target (local demo only)</label>
+                        <label>Lab Target</label>
                         <select name="lab_target">
                             {% for key, value in lab_targets.items() %}
                             <option value="{{ key }}">{{ key }} → {{ value }}</option>

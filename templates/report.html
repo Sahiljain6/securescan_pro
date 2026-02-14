@@ -16,18 +16,25 @@
 
             <article class="card">
                 <h2>Executive Summary</h2>
-                <p>Target: {{ url }}</p>
+                <p><strong>Target:</strong> {{ url }}</p>
+                <p><strong>Timestamp:</strong> {{ timestamp }}</p>
                 <p>Phishing Risk: <span class="badge {{ phishing_result|lower }}">{{ phishing_result }}</span> ({{ phishing_probability }}%)</p>
                 <p class="cvss cvss-{{ cvss_severity|lower }}">CVSS {{ cvss_score }} — {{ cvss_severity }}</p>
+                <p>{{ executive_summary }}</p>
             </article>
 
             <article class="card">
                 <h2>OWASP Breakdown</h2>
                 <ul>
                     {% for finding in owasp_findings %}
-                    <li><strong>{{ finding.name }}:</strong> {{ finding.details }}</li>
+                    <li><strong>{{ finding.name }}</strong> — {{ finding.details }} <em>({{ finding.confidence }} confidence)</em></li>
                     {% endfor %}
                 </ul>
+            </article>
+
+            <article class="card">
+                <h2>Network Exposure</h2>
+                <p>{% if open_ports %}Open ports: {{ open_ports|join(', ') }}{% else %}No common exposed ports detected.{% endif %}</p>
             </article>
 
             <article class="card">
