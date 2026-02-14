@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureScan Pro v4 | Scan Result</title>
+    <title>SecureScan Pro v5 | Scan Result</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -20,17 +20,20 @@
 
             <div class="result-grid">
                 <article class="card">
-                    <h2>Phishing Detection</h2>
-                    <p>Verdict: <span class="badge {{ phishing_result|lower }}">{{ phishing_result }}</span></p>
-                    <p>Probability: <strong>{{ phishing_probability }}%</strong></p>
+                    <h2>Assessment Context</h2>
+                    <p><strong>{{ framework }}</strong></p>
+                    <p class="muted">{{ scan_model }}</p>
                     <p class="muted">Scan time: {{ timestamp }}</p>
                 </article>
 
                 <article class="card">
                     <h2>Risk Posture</h2>
                     <p class="cvss cvss-{{ cvss_severity|lower }}">CVSS {{ cvss_score }} / 10 ({{ cvss_severity }})</p>
-                    <p class="muted">{{ cvss_method }}</p>
-                    <p class="muted">Average confidence: {{ confidence_average }}%</p>
+                    <p class="muted">{{ risk_model }}</p>
+                    <div class="confidence-meter-wrap">
+                        <div class="confidence-meter-label">Confidence Meter {{ confidence_average }}%</div>
+                        <div class="confidence-meter"><span style="width: {{ confidence_average }}%"></span></div>
+                    </div>
                 </article>
 
                 <article class="card full-width">
@@ -39,7 +42,12 @@
                 </article>
 
                 <article class="card full-width">
-                    <h2>Structured OWASP Top 5 Findings</h2>
+                    <h2>OWASP Top 5 Radar</h2>
+                    <canvas id="radarChart" data-domains='{{ domain_breakdown|tojson }}'></canvas>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Structured Findings + Evidence Summary</h2>
                     <div class="finding-list">
                         {% for finding in owasp_findings %}
                         <div class="finding-item">
@@ -48,38 +56,24 @@
                                 <span class="badge {{ finding.severity|lower }}">{{ finding.severity }}</span>
                             </div>
                             <p>{{ finding.summary }}</p>
-                            <p class="muted">Risk = {{ finding.risk_output.risk }} • Confidence {{ finding.confidence }}% • FP Suppression {{ finding.false_positive_controls.suppression_factor }}</p>
+                            <p class="muted">Weighted Risk = {{ finding.risk_output.weighted_risk }} • Confidence {{ finding.confidence }}%</p>
                             <p class="muted">Equation: {{ finding.risk_equation }}</p>
                             <pre class="stage-json">{{ finding.risk_inputs | tojson(indent=2) }}</pre>
-                            <h4>Evidence Summary</h4>
                             <ul>
                                 {% for ev in finding.evidence %}
                                 <li>{{ ev.name }} (score={{ ev.score }}, reliability={{ ev.reliability }}, weight={{ ev.weight }})</li>
                                 {% endfor %}
                             </ul>
-                            <div class="confidence-meter-wrap">
-                                <div class="confidence-meter-label">Confidence {{ finding.confidence }}%</div>
-                                <div class="confidence-meter"><span style="width: {{ finding.confidence }}%"></span></div>
-                            </div>
                         </div>
                         {% endfor %}
                     </div>
                 </article>
 
                 <article class="card full-width">
-                    <h2>Multi-Stage Validation Trace</h2>
+                    <h2>Multi-Stage Validation</h2>
                     {% for stage in owasp_stages %}
                     <pre class="stage-json">{{ stage | tojson(indent=2) }}</pre>
                     {% endfor %}
-                </article>
-
-                <article class="card">
-                    <h2>Open Ports</h2>
-                    {% if open_ports %}
-                    <p>{{ open_ports|join(', ') }}</p>
-                    {% else %}
-                    <p class="muted">No common exposed ports detected.</p>
-                    {% endif %}
                 </article>
 
                 <article class="card full-width">

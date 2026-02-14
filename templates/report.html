@@ -3,47 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureScan Pro v4 | Report</title>
+    <title>SecureScan Pro v5 | Report</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <main class="container">
         <section class="glass-card">
             <header class="top-bar">
-                <h1>Academic OWASP Top 5 Structured Report</h1>
+                <h1>SecureScan Pro v5 Assessment Report</h1>
                 <a href="{{ url_for('dashboard') }}" class="btn btn-ghost">Dashboard</a>
             </header>
 
-            <article class="card">
-                <h2>Abstract</h2>
-                <p><strong>Target:</strong> {{ url }} | <strong>Timestamp:</strong> {{ timestamp }}</p>
-                <p>This report presents a defensive, passive, and multi-stage OWASP Top 5 assessment. It does not execute exploit payloads or offensive post-exploitation behavior.</p>
-            </article>
+            <article class="card"><h2>Executive Summary</h2><p>{{ executive_summary }}</p></article>
 
             <article class="card">
-                <h2>Methodology</h2>
-                <p>Method includes staged baseline collection, safe probe validation, mitigation-aware scoring, and false-positive suppression through contradictory-signal checks.</p>
-            </article>
-
-            <article class="card">
-                <h2>Risk Modeling Explanation</h2>
-                <p>Equation: <strong>Risk = Exposure × Exploitability × (1 − Mitigation Strength)</strong></p>
-                <p>Confidence average: {{ confidence_average }}% | CVSS {{ cvss_score }} ({{ cvss_severity }})</p>
+                <h2>Risk Equation Section</h2>
+                <p><strong>{{ risk_model }}</strong></p>
+                <p>Average confidence: {{ confidence_average }}% | CVSS {{ cvss_score }} ({{ cvss_severity }})</p>
                 <p>{{ cvss_method }}</p>
             </article>
 
             <article class="card">
-                <h2>Domain-by-Domain Analysis</h2>
+                <h2>Evidence Correlation Explanation</h2>
+                <p>Each control domain was evaluated through baseline capture, non-destructive probe, error normalization, behavioral delta comparison, and correlated evidence scoring. The scanner is strictly defensive and passive.</p>
+            </article>
+
+            <article class="card">
+                <h2>Technical Appendix</h2>
                 <ul>
                     {% for finding in owasp_findings %}
                     <li>
-                        <strong>{{ finding.domain }}</strong> — {{ finding.summary }}
-                        <em>(Severity {{ finding.severity }}, Risk {{ finding.risk_output.risk }}, Confidence {{ finding.confidence }}%)</em>
-                        <ul>
-                            {% for ev in finding.evidence %}
-                            <li>{{ ev.name }} (score={{ ev.score }}, reliability={{ ev.reliability }}, weight={{ ev.weight }})</li>
-                            {% endfor %}
-                        </ul>
+                        <strong>{{ finding.domain }}</strong> — Severity {{ finding.severity }}, Weighted Risk {{ finding.risk_output.weighted_risk }}, Confidence {{ finding.confidence }}%.
                     </li>
                     {% endfor %}
                 </ul>
@@ -52,9 +42,9 @@
             <article class="card">
                 <h2>Limitations</h2>
                 <ul>
-                    <li>Passive analysis cannot guarantee exploitability without controlled validation environments.</li>
-                    <li>Header and response pattern analysis may miss logic-level flaws requiring authenticated workflows.</li>
-                    <li>Network restrictions and WAF behavior can reduce observable evidence.</li>
+                    {% for limitation in limitations %}
+                    <li>{{ limitation }}</li>
+                    {% endfor %}
                 </ul>
             </article>
         </section>

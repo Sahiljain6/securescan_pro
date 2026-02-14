@@ -1,42 +1,40 @@
-(function () {
-  const canvas = document.getElementById('owaspChart');
-  if (!canvas || typeof Chart === 'undefined') return;
+(() => {
+    const barCanvas = document.getElementById("owaspChart");
+    if (!barCanvas) return;
 
-  const domains = JSON.parse(canvas.dataset.domains || '[]');
-  const labels = domains.map((d) => d.domain);
-  const risks = domains.map((d) => Number(d.risk || 0) * 10);
-  const confidence = domains.map((d) => Number(d.confidence || 0));
+    const domains = JSON.parse(barCanvas.dataset.domains || "[]");
+    const labels = domains.map((d) => d.domain);
+    const riskValues = domains.map((d) => Number(d.risk) * 100);
+    const confidenceValues = domains.map((d) => Number(d.confidence));
 
-  new Chart(canvas, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Risk (0-10)',
-          data: risks,
-          backgroundColor: '#ef4444',
-          borderColor: '#7f1d1d',
-          borderWidth: 1,
+    new Chart(barCanvas, {
+        type: "bar",
+        data: {
+            labels,
+            datasets: [
+                { label: "Weighted Risk (%)", data: riskValues, backgroundColor: "rgba(255, 99, 132, 0.55)" },
+                { label: "Confidence (%)", data: confidenceValues, backgroundColor: "rgba(54, 162, 235, 0.55)" },
+            ],
         },
-        {
-          label: 'Confidence (%)',
-          data: confidence,
-          backgroundColor: '#3b82f6',
-          borderColor: '#1e3a8a',
-          borderWidth: 1,
+        options: { responsive: true, scales: { y: { beginAtZero: true, max: 100 } } },
+    });
+
+    const radarCanvas = document.getElementById("radarChart");
+    if (!radarCanvas) return;
+
+    new Chart(radarCanvas, {
+        type: "radar",
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: "Control Domain Risk Radar",
+                    data: riskValues,
+                    borderColor: "rgba(255, 206, 86, 1)",
+                    backgroundColor: "rgba(255, 206, 86, 0.2)",
+                },
+            ],
         },
-      ],
-    },
-    options: {
-      responsive: true,
-      scales: {
-        y: { beginAtZero: true, max: 100, ticks: { color: '#e2e8f0' } },
-        x: { ticks: { color: '#e2e8f0' } },
-      },
-      plugins: {
-        legend: { labels: { color: '#e2e8f0' } },
-      },
-    },
-  });
+        options: { responsive: true, scales: { r: { beginAtZero: true, max: 100 } } },
+    });
 })();

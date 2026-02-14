@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureScan Pro v4 | Dashboard</title>
+    <title>SecureScan Pro v5 | Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -11,8 +11,8 @@
         <section class="glass-card">
             <header class="top-bar">
                 <div>
-                    <h1>SecureScan Pro v4 Dashboard</h1>
-                    <p class="muted">Academic-grade OWASP Top 5 structured assessment with mitigation-aware risk modeling.</p>
+                    <h1>SecureScan Pro v5 Dashboard</h1>
+                    <p class="muted">Industry-grade OWASP Top 5 defensive assessment with modular risk and confidence engines.</p>
                 </div>
                 <a href="{{ url_for('logout') }}" class="btn btn-ghost">Logout</a>
             </header>
@@ -29,7 +29,7 @@
 
             <div class="dashboard-grid">
                 <article class="card">
-                    <h2>Run Scan</h2>
+                    <h2>Run Defensive Assessment</h2>
                     <form method="POST" class="form-grid">
                         <label>Target URL</label>
                         <input name="url" placeholder="https://example.com" required>

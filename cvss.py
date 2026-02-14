@@ -29,10 +29,10 @@ def score_findings(findings: list[dict]) -> dict:
 
     weighted: list[float] = []
     for finding in findings:
-        risk = float(finding.get("risk_output", {}).get("risk", 0.0)) * 10
+        risk = float(finding.get("risk_output", {}).get("weighted_risk", 0.0)) * 10
         confidence = float(finding.get("confidence", 0.0)) / 100.0
-        mitigation_strength = float(finding.get("risk_inputs", {}).get("mitigation_strength", 0.0))
-        mitigation_weight = max(0.35, 1 - mitigation_strength)
+        mitigation = float(finding.get("risk_inputs", {}).get("mitigation", 0.0))
+        mitigation_weight = max(0.35, 1 - mitigation)
         severity_weight = SEVERITY_WEIGHTS.get(finding.get("severity", "Low"), 0.5)
         weighted.append(risk * confidence * mitigation_weight * severity_weight)
 

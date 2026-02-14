@@ -1,138 +1,90 @@
-# SecureScan Pro v4
+# SecureScan Pro v5
 
-SecureScan Pro v4 is an academic-grade, defensive-only OWASP Top 5 structured assessment engine.
+SecureScan Pro v5 is an industry-grade, defensive-only OWASP Top 5 assessment platform with modular architecture, confidence-weighted risk modeling, dashboard analytics, and PDF reporting.
 
-## Scope and safety
+## Defensive Scope
 
-- No exploit tooling.
 - No aggressive attack payloads.
-- Passive, non-destructive, multi-stage validation only.
-- Intended for authorized security posture assessment and research workflows.
+- No exploitation workflows.
+- Passive and behavioral validation only.
+- Legal/ethical scanning model for authorized targets.
 
-## OWASP Top 5 structured modules
+## Modular Engine Architecture
 
-Implemented in `owasp_scanner.py` with shared passive collection and domain modules:
+Implemented under `securescan_v5/engines`:
 
-1. Broken Access Control
-2. Cryptographic Failures
-3. Injection
-4. Security Misconfiguration
-5. Identification & Authentication Failures
+1. **Baseline engine** (`baseline_engine.py`) — baseline capture + safe probes.
+2. **Correlation engine** (`correlation_engine.py`) — error normalization, behavioral deltas, correlated evidence scoring.
+3. **Mitigation analyzer** (`mitigation_analyzer.py`) — security header/session control coverage.
+4. **Confidence engine** (`confidence_engine.py`) — confidence scoring using evidence + stage coverage.
+5. **Risk modeling engine** (`risk_modeling_engine.py`) —
+   `Risk = Exposure × Exploitability × (1 − Mitigation)` weighted by confidence.
 
-Each domain module performs:
+## OWASP Control Domains
 
-- Multi-stage validation
-- Evidence collection
-- Mitigation-aware scoring
-- Structured JSON finding output
+Implemented in `securescan_v5/domains/owasp_top5.py`:
 
-## Risk modeling system
+- Broken Access Control
+- Cryptographic Failures
+- Injection
+- Security Misconfiguration
+- Authentication Failures
 
-`risk_model.py` implements:
+## Multi-Stage Validation Pipeline
 
-```text
-Risk = Exposure × Exploitability × (1 − Mitigation Strength)
-```
+Each domain contains:
 
-Enhancements:
+1. Baseline capture
+2. Non-destructive probe
+3. Error normalization
+4. Behavioral delta comparison
+5. Correlated evidence scoring
 
-- Evidence weighting (`weighted_evidence_strength`)
-- Confidence scoring (`confidence_score`)
-- False-positive suppression (`false_positive_suppression`)
+## Dashboard and Reporting
 
-Example domain finding:
-
-```json
-{
-  "domain": "Injection",
-  "risk_equation": "Risk = Exposure × Exploitability × (1 − Mitigation Strength)",
-  "risk_inputs": {
-    "exposure": 0.9,
-    "exploitability": 0.75,
-    "mitigation_strength": 0.35,
-    "evidence_strength": 0.62
-  },
-  "risk_output": {
-    "risk": 0.29,
-    "base_risk": 0.4388,
-    "confidence": 58.4,
-    "false_positive_factor": 0.79,
-    "severity": "Medium"
-  },
-  "evidence": [],
-  "stages": []
-}
-```
-
-## UI updates
-
-The dashboard/result views now provide:
-
-- Control domain breakdown
-- Risk equation visualization
+- Control-domain breakdown (bar chart)
+- OWASP radar chart
 - Confidence meter
 - Severity classification
 - Evidence summary
+- PDF report sections:
+  - Executive summary
+  - Technical appendix
+  - Evidence correlation explanation
+  - Risk equation section
+  - Limitations
 
-## PDF report updates
+## Deployment
 
-The PDF generator includes:
+- Python 3.11 runtime (`runtime.txt`)
+- Render compatible (`Procfile` + `gunicorn`)
+- PostgreSQL via `DATABASE_URL`
 
-- Abstract
-- Methodology
-- Risk modeling explanation
-- Domain-by-domain analysis
-- Limitations section
-
-## Folder structure
+## Codebase Structure
 
 ```text
 securescan_pro/
 ├── app.py
-├── cvss.py
-├── ml_model.py
 ├── owasp_scanner.py
-├── port_scanner.py
 ├── report_generator.py
-├── risk_model.py
-├── scanner.py
-├── requirements.txt
-├── runtime.txt
-├── Procfile
-├── static/
-│   ├── charts.js
-│   └── style.css
-└── templates/
-    ├── dashboard.html
-    ├── login.html
-    ├── report.html
-    └── result.html
+├── cvss.py
+├── securescan_v5/
+│   ├── __init__.py
+│   ├── models.py
+│   ├── orchestrator.py
+│   ├── engines/
+│   │   ├── baseline_engine.py
+│   │   ├── correlation_engine.py
+│   │   ├── mitigation_analyzer.py
+│   │   ├── confidence_engine.py
+│   │   └── risk_modeling_engine.py
+│   └── domains/
+│       └── owasp_top5.py
+├── templates/
+│   ├── dashboard.html
+│   ├── result.html
+│   └── report.html
+└── static/
+    ├── charts.js
+    └── style.css
 ```
-
-## Deployment instructions
-
-### Local (Python 3.11)
-
-1. `python3.11 -m venv .venv`
-2. `source .venv/bin/activate`
-3. `pip install -r requirements.txt`
-4. Set environment variables:
-   - `export FLASK_ENV=development`
-   - `export SECRET_KEY='change-me'`
-   - `export ADMIN_USERNAME='admin'`
-   - `export ADMIN_PASSWORD='admin123'`
-   - `export DATABASE_URL='postgresql://user:pass@host:5432/dbname'` (optional, for PostgreSQL)
-5. Start server: `python app.py`
-6. Open `http://127.0.0.1:5000`
-
-### Render + PostgreSQL
-
-1. Create Render Web Service from repo.
-2. Use `runtime.txt` and `requirements.txt`.
-3. Start command: `gunicorn app:app`.
-4. Configure env vars in Render:
-   - `SECRET_KEY`
-   - `ADMIN_USERNAME`
-   - `ADMIN_PASSWORD`
-   - `DATABASE_URL` (Render PostgreSQL URI)
-
