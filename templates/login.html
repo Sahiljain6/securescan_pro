@@ -7,23 +7,32 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <main class="panel">
-        <h1>SecureScan Pro</h1>
-        <p class="subtitle">AI phishing detection + basic port scanning</p>
+    <div class="background-glow"></div>
+    <main class="container auth-container">
+        <section class="glass-card auth-card">
+            <h1>SecureScan Pro</h1>
+            <p class="subtitle">Production-ready phishing and exposure intelligence platform.</p>
 
-        <form method="post" class="form-card">
-            <label for="username">Username</label>
-            <input id="username" name="username" type="text" required>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <div class="flash-stack">
+                  {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
 
-            <label for="password">Password</label>
-            <input id="password" name="password" type="password" required>
+            <form method="post" class="form-grid" autocomplete="off">
+                <label for="username">Username</label>
+                <input id="username" name="username" type="text" required>
 
-            {% if error %}
-                <p class="error">{{ error }}</p>
-            {% endif %}
+                <label for="password">Password</label>
+                <input id="password" name="password" type="password" required>
 
-            <button type="submit">Sign In</button>
-        </form>
+                <button type="submit" class="btn btn-primary">Sign In</button>
+            </form>
+        </section>
     </main>
 </body>
 </html>

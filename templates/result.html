@@ -7,23 +7,40 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <main class="panel">
-        <h1>Scan Result</h1>
+    <div class="background-glow"></div>
+    <main class="container">
+        <section class="glass-card">
+            <header class="top-bar">
+                <h1>Scan Report</h1>
+                <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+            </header>
 
-        <section class="result-card">
-            <p><strong>URL:</strong> {{ url }}</p>
-            <p><strong>Classification:</strong> <span class="badge {{ result|lower }}">{{ result }}</span></p>
-            <p><strong>Probability Score:</strong> {{ probability }}%</p>
-            <p><strong>Open Ports:</strong>
-                {% if open_ports %}
-                    {{ open_ports | join(', ') }}
-                {% else %}
-                    None detected on common ports
-                {% endif %}
-            </p>
+            <section class="result-grid">
+                <article class="card">
+                    <h2>Threat Classification</h2>
+                    <p class="result-url">{{ url }}</p>
+                    <p>
+                        Verdict:
+                        <span class="badge {{ result|lower }}">{{ result }}</span>
+                    </p>
+                    <p>Risk Score: <strong>{{ probability }}%</strong></p>
+                </article>
+
+                <article class="card">
+                    <h2>Port Exposure</h2>
+                    {% if open_ports %}
+                        <p class="muted">Open common ports detected:</p>
+                        <ul class="port-list">
+                            {% for port in open_ports %}
+                                <li>Port {{ port }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="muted">No common open ports were detected on the host.</p>
+                    {% endif %}
+                </article>
+            </section>
         </section>
-
-        <a class="text-link" href="{{ url_for('dashboard') }}">← Back to Dashboard</a>
     </main>
 </body>
 </html>
