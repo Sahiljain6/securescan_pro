@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureScan Pro v2 | Report</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="container">
+        <section class="glass-card">
+            <header class="top-bar">
+                <h1>Professional Vulnerability Report</h1>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-ghost">Dashboard</a>
+            </header>
+
+            <article class="card">
+                <h2>Executive Summary</h2>
+                <p>Target: {{ url }}</p>
+                <p>Phishing Risk: <span class="badge {{ phishing_result|lower }}">{{ phishing_result }}</span> ({{ phishing_probability }}%)</p>
+                <p class="cvss cvss-{{ cvss_severity|lower }}">CVSS {{ cvss_score }} — {{ cvss_severity }}</p>
+            </article>
+
+            <article class="card">
+                <h2>OWASP Breakdown</h2>
+                <ul>
+                    {% for finding in owasp_findings %}
+                    <li><strong>{{ finding.name }}:</strong> {{ finding.details }}</li>
+                    {% endfor %}
+                </ul>
+            </article>
+
+            <article class="card">
+                <h2>Recommendations</h2>
+                <ul>
+                    {% for rec in recommendations %}
+                    <li>{{ rec }}</li>
+                    {% endfor %}
+                </ul>
+            </article>
+        </section>
+    </main>
+</body>
+</html>

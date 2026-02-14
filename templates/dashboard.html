@@ -3,64 +3,72 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureScan Pro | Dashboard</title>
+    <title>SecureScan Pro v2 | Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <div class="background-glow"></div>
     <main class="container">
         <section class="glass-card">
             <header class="top-bar">
                 <div>
-                    <h1>Threat Dashboard</h1>
-                    <p class="subtitle">Welcome back, {{ username }}. Run URL intelligence scans and check common exposed ports.</p>
+                    <h1>SecureScan Pro v2 Dashboard</h1>
+                    <p class="muted">Phishing, OWASP, CVSS, and network exposure analysis.</p>
                 </div>
-                <a class="btn btn-ghost" href="{{ url_for('logout') }}">Logout</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-ghost">Logout</a>
             </header>
 
             {% with messages = get_flashed_messages(with_categories=true) %}
-              {% if messages %}
+                {% if messages %}
                 <div class="flash-stack">
-                  {% for category, message in messages %}
+                    {% for category, message in messages %}
                     <div class="flash {{ category }}">{{ message }}</div>
-                  {% endfor %}
+                    {% endfor %}
                 </div>
-              {% endif %}
+                {% endif %}
             {% endwith %}
 
-            <section class="dashboard-grid">
+            <div class="dashboard-grid">
                 <article class="card">
-                    <h2>Run New Scan</h2>
-                    <form method="post" class="form-grid">
-                        <label for="url">Target URL</label>
-                        <input id="url" name="url" type="text" placeholder="https://example.com/login" required>
+                    <h2>Run Scan</h2>
+                    <form method="POST" class="form-grid">
+                        <label>Target URL</label>
+                        <input name="url" placeholder="https://example.com" required>
 
-                        <label for="host">Host for Port Scan (optional)</label>
-                        <input id="host" name="host" type="text" placeholder="example.com">
+                        <label class="toggle-row">
+                            <input type="checkbox" name="lab_mode"> Enterprise Lab Mode
+                        </label>
 
-                        <button type="submit" class="btn btn-primary">Analyze Threat</button>
+                        <label>Lab Target (local demo only)</label>
+                        <select name="lab_target">
+                            {% for key, value in lab_targets.items() %}
+                            <option value="{{ key }}">{{ key }} → {{ value }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <button class="btn btn-primary" type="submit">Start Scan</button>
                     </form>
                 </article>
 
                 <article class="card">
-                    <h2>Recent Scan History</h2>
-                    {% if history %}
+                    <h2>Recent Scans</h2>
                     <div class="history-list">
-                        {% for record in history %}
+                        {% for item in history %}
                         <div class="history-item">
                             <div>
-                                <p class="history-url">{{ record.url }}</p>
-                                <p class="history-meta">{{ record.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</p>
+                                <div class="history-url">{{ item.url }}</div>
+                                <small class="muted">{{ item.username }}</small>
                             </div>
-                            <span class="badge {{ record.result|lower }}">{{ record.result }}</span>
+                            <div class="text-right">
+                                <span class="badge {{ item.phishing_result|lower }}">{{ item.phishing_result }}</span>
+                                <div class="muted">CVSS {{ item.cvss_score }} ({{ item.cvss_severity }})</div>
+                            </div>
                         </div>
+                        {% else %}
+                        <p class="muted">No scan history yet.</p>
                         {% endfor %}
                     </div>
-                    {% else %}
-                    <p class="muted">No previous scans found for this account.</p>
-                    {% endif %}
                 </article>
-            </section>
+            </div>
         </section>
     </main>
 </body>

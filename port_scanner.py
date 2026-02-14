@@ -1,32 +1,26 @@
+from __future__ import annotations
+
 import socket
 from urllib.parse import urlparse
 
-COMMON_PORTS = (21, 22, 23, 25, 53, 80, 110, 143, 443, 3306, 5432, 6379)
+COMMON_PORTS = [21, 22, 25, 53, 80, 110, 143, 443, 445, 587, 8080, 8443]
 
 
-def _resolve_host(host: str) -> str:
-    cleaned = (host or "").strip()
-    if not cleaned:
-        return ""
-    if "://" in cleaned:
-        parsed = urlparse(cleaned)
-        return parsed.hostname or ""
-    return cleaned.split("/")[0]
+def _extract_host(target: str) -> str:
+    if target.startswith(("http://", "https://")):
+        return urlparse(target).hostname or ""
+    return target
 
 
-def scan_ports(host: str, timeout: float = 0.5) -> list[int]:
-    target = _resolve_host(host)
-    if not target:
+def scan_ports(target: str, ports: list[int] | None = None, timeout: float = 0.35) -> list[int]:
+    host = _extract_host(target)
+    if not host:
         return []
 
-    open_ports = []
-    for port in COMMON_PORTS:
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                sock.settimeout(timeout)
-                if sock.connect_ex((target, port)) == 0:
-                    open_ports.append(port)
-        except (socket.gaierror, socket.timeout, OSError):
-            continue
-
+    open_ports: list[int] = []
+    for port in (ports or COMMON_PORTS):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(timeout)
+            if sock.connect_ex((host, port)) == 0:
+                open_ports.append(port)
     return open_ports
