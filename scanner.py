@@ -19,11 +19,11 @@ SUSPICIOUS_KEYWORDS = {
 
 
 def _ensure_scheme(url: str) -> str:
-    cleaned = url.strip()
+    cleaned = (url or "").strip()
     if not cleaned:
-        return cleaned
+        return ""
     if not cleaned.startswith(("http://", "https://")):
-        return f"http://{cleaned}"
+        return f"https://{cleaned}"
     return cleaned
 
 
@@ -54,17 +54,20 @@ def _extract_features(url: str) -> list[int]:
     ]
 
 
-def scan_url(url: str):
+def scan_url(url: str) -> tuple[str, float]:
     normalized_url = _ensure_scheme(url)
     if not normalized_url:
-        return "Suspicious", 0.55
+        return "Suspicious", 0.60
 
-    model = get_model()
-    features = _extract_features(normalized_url)
-    probabilities = model.predict_proba([features])[0]
-    malicious_probability = float(probabilities[1])
+    try:
+        model = get_model()
+        features = _extract_features(normalized_url)
+        probabilities = model.predict_proba([features])[0]
+        malicious_probability = float(probabilities[1])
+    except Exception:
+        return "Suspicious", 0.60
 
-    if malicious_probability >= 0.8:
+    if malicious_probability >= 0.80:
         label = "Malicious"
     elif malicious_probability >= 0.45:
         label = "Suspicious"

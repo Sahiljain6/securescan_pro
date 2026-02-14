@@ -7,22 +7,61 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <main class="panel">
-        <div class="header-row">
-            <h1>Dashboard</h1>
-            <a class="text-link" href="{{ url_for('logout') }}">Logout</a>
-        </div>
-        <p class="subtitle">Welcome, {{ username }}. Scan URLs for phishing risk and common open ports.</p>
+    <div class="background-glow"></div>
+    <main class="container">
+        <section class="glass-card">
+            <header class="top-bar">
+                <div>
+                    <h1>Threat Dashboard</h1>
+                    <p class="subtitle">Welcome back, {{ username }}. Run URL intelligence scans and check common exposed ports.</p>
+                </div>
+                <a class="btn btn-ghost" href="{{ url_for('logout') }}">Logout</a>
+            </header>
 
-        <form method="post" class="form-card">
-            <label for="url">Target URL</label>
-            <input id="url" name="url" type="text" placeholder="https://example.com/login" required>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+              {% if messages %}
+                <div class="flash-stack">
+                  {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            {% endwith %}
 
-            <label for="host">Host for port scan (optional)</label>
-            <input id="host" name="host" type="text" placeholder="example.com">
+            <section class="dashboard-grid">
+                <article class="card">
+                    <h2>Run New Scan</h2>
+                    <form method="post" class="form-grid">
+                        <label for="url">Target URL</label>
+                        <input id="url" name="url" type="text" placeholder="https://example.com/login" required>
 
-            <button type="submit">Run Secure Scan</button>
-        </form>
+                        <label for="host">Host for Port Scan (optional)</label>
+                        <input id="host" name="host" type="text" placeholder="example.com">
+
+                        <button type="submit" class="btn btn-primary">Analyze Threat</button>
+                    </form>
+                </article>
+
+                <article class="card">
+                    <h2>Recent Scan History</h2>
+                    {% if history %}
+                    <div class="history-list">
+                        {% for record in history %}
+                        <div class="history-item">
+                            <div>
+                                <p class="history-url">{{ record.url }}</p>
+                                <p class="history-meta">{{ record.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</p>
+                            </div>
+                            <span class="badge {{ record.result|lower }}">{{ record.result }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="muted">No previous scans found for this account.</p>
+                    {% endif %}
+                </article>
+            </section>
+        </section>
     </main>
 </body>
 </html>
