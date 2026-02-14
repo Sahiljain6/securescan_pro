@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureScan Pro v2 | Dashboard</title>
+    <title>SecureScan Pro v4 | Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -11,8 +11,8 @@
         <section class="glass-card">
             <header class="top-bar">
                 <div>
-                    <h1>SecureScan Pro v2 Dashboard</h1>
-                    <p class="muted">Enterprise phishing, multi-stage OWASP analysis, CVSS, and network exposure assessment.</p>
+                    <h1>SecureScan Pro v4 Dashboard</h1>
+                    <p class="muted">Academic-grade OWASP Top 5 structured assessment with mitigation-aware risk modeling.</p>
                 </div>
                 <a href="{{ url_for('logout') }}" class="btn btn-ghost">Logout</a>
             </header>
@@ -60,7 +60,7 @@
                             </div>
                             <div class="text-right">
                                 <span class="badge {{ item.phishing_result|lower }}">{{ item.phishing_result }}</span>
-                                <div class="muted">CVSS {{ item.cvss_score }} ({{ item.cvss_severity }})</div>
+                                <div class="muted">CVSS {{ item.cvss_score }} ({{ item.cvss_severity }}) • Confidence {{ item.confidence_avg }}%</div>
                             </div>
                         </div>
                         {% else %}

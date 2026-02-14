@@ -1,30 +1,88 @@
-# SecureScan Pro v3
+# SecureScan Pro v4
 
-SecureScan Pro is a defensive, educational web security assessment platform.
+SecureScan Pro v4 is an academic-grade, defensive-only OWASP Top 5 structured assessment engine.
 
-## Multi-stage OWASP analysis engine
+## Scope and safety
 
-The scanner now executes a modular six-stage pipeline:
+- No exploit tooling.
+- No aggressive attack payloads.
+- Passive, non-destructive, multi-stage validation only.
+- Intended for authorized security posture assessment and research workflows.
 
-1. Passive reconnaissance (headers, TLS, redirects, cookie flags)
-2. Reflection detection (parameter reflection + context classification)
-3. Encoding validation (HTML encoding and JavaScript escaping)
-4. Mitigation awareness (CSP, X-Frame-Options, HSTS)
-5. Behavioral validation (length/status drift + error signatures)
-6. Confidence engine (exploitability scoring, confidence %, severity, false-positive reduction)
+## OWASP Top 5 structured modules
 
-Structured findings output:
+Implemented in `owasp_scanner.py` with shared passive collection and domain modules:
+
+1. Broken Access Control
+2. Cryptographic Failures
+3. Injection
+4. Security Misconfiguration
+5. Identification & Authentication Failures
+
+Each domain module performs:
+
+- Multi-stage validation
+- Evidence collection
+- Mitigation-aware scoring
+- Structured JSON finding output
+
+## Risk modeling system
+
+`risk_model.py` implements:
+
+```text
+Risk = Exposure × Exploitability × (1 − Mitigation Strength)
+```
+
+Enhancements:
+
+- Evidence weighting (`weighted_evidence_strength`)
+- Confidence scoring (`confidence_score`)
+- False-positive suppression (`false_positive_suppression`)
+
+Example domain finding:
 
 ```json
 {
-  "vulnerability": "...",
-  "exploitability_score": 0.0,
-  "confidence": 0.0,
-  "severity": "Informational|Low|Medium|High|Critical",
-  "mitigation_present": true,
-  "explanation": "..."
+  "domain": "Injection",
+  "risk_equation": "Risk = Exposure × Exploitability × (1 − Mitigation Strength)",
+  "risk_inputs": {
+    "exposure": 0.9,
+    "exploitability": 0.75,
+    "mitigation_strength": 0.35,
+    "evidence_strength": 0.62
+  },
+  "risk_output": {
+    "risk": 0.29,
+    "base_risk": 0.4388,
+    "confidence": 58.4,
+    "false_positive_factor": 0.79,
+    "severity": "Medium"
+  },
+  "evidence": [],
+  "stages": []
 }
 ```
+
+## UI updates
+
+The dashboard/result views now provide:
+
+- Control domain breakdown
+- Risk equation visualization
+- Confidence meter
+- Severity classification
+- Evidence summary
+
+## PDF report updates
+
+The PDF generator includes:
+
+- Abstract
+- Methodology
+- Risk modeling explanation
+- Domain-by-domain analysis
+- Limitations section
 
 ## Folder structure
 
@@ -36,6 +94,7 @@ securescan_pro/
 ├── owasp_scanner.py
 ├── port_scanner.py
 ├── report_generator.py
+├── risk_model.py
 ├── scanner.py
 ├── requirements.txt
 ├── runtime.txt
@@ -50,38 +109,30 @@ securescan_pro/
     └── result.html
 ```
 
-## Local deployment (Python 3.11)
+## Deployment instructions
 
-1. Create and activate a venv:
-   - `python3.11 -m venv .venv`
-   - `source .venv/bin/activate`
-2. Install dependencies:
-   - `pip install -r requirements.txt`
-3. Configure environment:
+### Local (Python 3.11)
+
+1. `python3.11 -m venv .venv`
+2. `source .venv/bin/activate`
+3. `pip install -r requirements.txt`
+4. Set environment variables:
    - `export FLASK_ENV=development`
    - `export SECRET_KEY='change-me'`
    - `export ADMIN_USERNAME='admin'`
    - `export ADMIN_PASSWORD='admin123'`
-   - Optional PostgreSQL on Render/production:
-     - `export DATABASE_URL='postgresql://user:pass@host:5432/dbname'`
-4. Run app:
-   - `python app.py`
-5. Open:
-   - `http://127.0.0.1:5000`
+   - `export DATABASE_URL='postgresql://user:pass@host:5432/dbname'` (optional, for PostgreSQL)
+5. Start server: `python app.py`
+6. Open `http://127.0.0.1:5000`
 
-## Render deployment
+### Render + PostgreSQL
 
-1. Push repository to Git provider.
-2. In Render, create a **Web Service** and point it to the repo.
-3. Runtime uses `runtime.txt` and dependencies from `requirements.txt`.
-4. Start command from `Procfile`:
-   - `gunicorn app:app`
-5. Set environment variables in Render dashboard:
-   - `SECRET_KEY`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`
-   - `DATABASE_URL` (Render PostgreSQL, with `postgresql://` format)
+1. Create Render Web Service from repo.
+2. Use `runtime.txt` and `requirements.txt`.
+3. Start command: `gunicorn app:app`.
+4. Configure env vars in Render:
+   - `SECRET_KEY`
+   - `ADMIN_USERNAME`
+   - `ADMIN_PASSWORD`
+   - `DATABASE_URL` (Render PostgreSQL URI)
 
-## Safety constraints
-
-- Defensive and educational scanning only.
-- No aggressive attack payloads.
-- Probes are passive/non-destructive and baseline-compared.
