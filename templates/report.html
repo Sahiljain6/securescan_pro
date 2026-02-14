@@ -24,12 +24,23 @@
             </article>
 
             <article class="card">
-                <h2>OWASP Breakdown</h2>
+                <h2>Structured OWASP Findings</h2>
                 <ul>
                     {% for finding in owasp_findings %}
-                    <li><strong>{{ finding.name }}</strong> — {{ finding.details }} <em>({{ finding.confidence }} confidence)</em></li>
+                    <li>
+                        <strong>{{ finding.vulnerability }}</strong> — {{ finding.explanation }}
+                        <em>(Exploitability {{ finding.exploitability_score }}/10, Confidence {{ finding.confidence }}%, Severity {{ finding.severity }})</em>
+                    </li>
                     {% endfor %}
                 </ul>
+            </article>
+
+            <article class="card">
+                <h2>Multi-Stage Analysis</h2>
+                {% for stage in owasp_stages %}
+                <h3>{{ stage.stage }}</h3>
+                <pre class="stage-json">{{ stage | tojson(indent=2) }}</pre>
+                {% endfor %}
             </article>
 
             <article class="card">

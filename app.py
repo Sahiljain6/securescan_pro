@@ -140,7 +140,8 @@ def create_app() -> Flask:
                 return redirect(url_for("dashboard"))
 
             phishing_result, phishing_probability = scan_url(normalized)
-            findings = run_owasp_scan(normalized)
+            owasp_scan = run_owasp_scan(normalized)
+            findings = owasp_scan["findings"]
             cvss = score_findings(findings)
             open_ports = scan_ports(normalized)
 
@@ -154,8 +155,8 @@ def create_app() -> Flask:
 
             executive_summary = (
                 f"The target {normalized} was classified as {phishing_result} with a phishing probability of "
-                f"{round(phishing_probability * 100, 2)}%. {sum(1 for f in findings if f.get('vulnerable'))} out of "
-                f"{len(findings)} OWASP-aligned checks indicated potential risk. "
+                f"{round(phishing_probability * 100, 2)}%. {sum(1 for f in findings if f.get('exploitability_score', 0) >= 1.5)} out of "
+                f"{len(findings)} OWASP-aligned findings showed actionable risk. "
                 f"Overall risk posture is {cvss['severity']} (CVSS {cvss['score']})."
             )
 
@@ -178,6 +179,7 @@ def create_app() -> Flask:
                 "phishing_result": phishing_result,
                 "phishing_probability": round(phishing_probability * 100, 2),
                 "owasp_findings": findings,
+                "owasp_stages": owasp_scan["stages"],
                 "cvss_score": cvss["score"],
                 "cvss_severity": cvss["severity"],
                 "cvss_method": cvss["method"],

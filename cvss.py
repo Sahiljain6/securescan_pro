@@ -1,23 +1,16 @@
 from __future__ import annotations
 
-CONFIDENCE_MULTIPLIER = {
-    "Informational": 0.0,
-    "Low": 0.6,
-    "Medium": 0.85,
-    "High": 1.0,
-}
-
-BASE_SCORE_MAP = {
-    "SQL Injection (Passive)": 9.8,
-    "Reflected XSS (Passive Reflection)": 6.1,
-    "CSRF Protections": 5.4,
-    "Security Headers": 4.2,
-    "TLS/SSL Certificate": 7.4,
+SEVERITY_WEIGHTS = {
+    "Informational": 0.2,
+    "Low": 0.45,
+    "Medium": 0.7,
+    "High": 0.9,
+    "Critical": 1.0,
 }
 
 
 def _severity_label(score: float) -> str:
-    if score == 0:
+    if score < 1.5:
         return "Low"
     if score < 4.0:
         return "Low"
@@ -29,30 +22,25 @@ def _severity_label(score: float) -> str:
 
 
 def score_findings(findings: list[dict]) -> dict:
-    weighted_scores: list[float] = []
-    csp_present = any(f.get("name") == "Security Headers" and f.get("csp_present") for f in findings)
+    if not findings:
+        return {
+            "score": 0.0,
+            "severity": "Low",
+            "method": "CVSS-inspired exploitability/mitigation weighting",
+        }
 
+    weighted: list[float] = []
     for finding in findings:
-        if not finding.get("vulnerable"):
-            continue
-        name = finding.get("name", "")
-        base = BASE_SCORE_MAP.get(name, 3.5)
-        confidence = finding.get("confidence", "Medium")
-        multiplier = CONFIDENCE_MULTIPLIER.get(confidence, 0.8)
+        exploitability = float(finding.get("exploitability_score", 0.0))
+        confidence = float(finding.get("confidence", 0.0)) / 100.0
+        mitigation_weight = 0.75 if finding.get("mitigation_present") else 1.0
+        severity_weight = SEVERITY_WEIGHTS.get(finding.get("severity", "Low"), 0.5)
+        weighted.append(exploitability * confidence * mitigation_weight * severity_weight)
 
-        if name == "Reflected XSS (Passive Reflection)" and csp_present:
-            multiplier *= 0.7  # CSP-aware severity reduction
-
-        weighted_scores.append(base * multiplier)
-
-    if not weighted_scores:
-        score = 0.0
-    else:
-        aggregate = sum(weighted_scores) / len(weighted_scores)
-        score = round(min(10.0, aggregate + max(0.0, len(weighted_scores) - 1) * 0.35), 1)
-
+    aggregate = sum(weighted) / len(weighted)
+    score = round(min(10.0, aggregate + (len([w for w in weighted if w > 0]) - 1) * 0.3), 1)
     return {
         "score": score,
         "severity": _severity_label(score),
-        "method": "CVSS v3.1-inspired weighted aggregation with confidence multipliers",
+        "method": "CVSS-inspired exploitability score × confidence × mitigation weighting",
     }
