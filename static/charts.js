@@ -3,21 +3,20 @@
   if (!canvas || typeof Chart === 'undefined') return;
 
   const findings = JSON.parse(canvas.dataset.findings || '[]');
-  const issueCount = findings.filter((f) => f.vulnerable).length;
-  const safeCount = findings.length - issueCount;
+  const issueCount = findings.filter((f) => (f.exploitability_score || 0) >= 1.5).length;
+  const infoCount = findings.length - issueCount;
 
-  const confidenceMap = { High: 0, Medium: 0, Low: 0, Informational: 0 };
-  findings.forEach((f) => {
-    confidenceMap[f.confidence] = (confidenceMap[f.confidence] || 0) + 1;
-  });
+  const avgConfidence = findings.length
+    ? (findings.reduce((acc, f) => acc + (Number(f.confidence) || 0), 0) / findings.length).toFixed(1)
+    : '0.0';
 
   new Chart(canvas, {
     type: 'doughnut',
     data: {
-      labels: ['Issue Detected', 'No Issue'],
+      labels: ['Issue Detected', 'Informational'],
       datasets: [{
-        data: [issueCount, safeCount],
-        backgroundColor: ['#ef4444', '#16a34a'],
+        data: [issueCount, infoCount],
+        backgroundColor: ['#ef4444', '#64748b'],
         borderColor: '#0f172a',
         borderWidth: 2,
       }],
@@ -32,7 +31,6 @@
 
   const breakdown = document.createElement('p');
   breakdown.className = 'muted';
-  breakdown.textContent = `Confidence mix — High: ${confidenceMap.High}, Medium: ${confidenceMap.Medium}, Low: ${confidenceMap.Low}, Informational: ${confidenceMap.Informational}`;
-
+  breakdown.textContent = `Average confidence: ${avgConfidence}% across ${findings.length} finding(s).`;
   canvas.parentElement.appendChild(breakdown);
 })();

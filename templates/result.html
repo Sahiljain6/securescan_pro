@@ -34,24 +34,36 @@
                 </article>
 
                 <article class="card full-width">
-                    <h2>OWASP Breakdown</h2>
-                    <div class="legend">
-                        <span class="confidence high">High Confidence</span>
-                        <span class="confidence medium">Medium Confidence</span>
-                        <span class="confidence low">Low Confidence</span>
-                        <span class="confidence informational">Informational</span>
+                    <h2>Multi-Stage OWASP Breakdown</h2>
+                    <div class="finding-list">
+                        {% for stage in owasp_stages %}
+                        <div class="finding-item">
+                            <div class="finding-row">
+                                <strong>{{ stage.stage }}</strong>
+                            </div>
+                            <pre class="stage-json">{{ stage | tojson(indent=2) }}</pre>
+                        </div>
+                        {% endfor %}
                     </div>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Structured Findings</h2>
                     <div class="finding-list" id="finding-list">
                         {% for finding in owasp_findings %}
-                        <div class="finding-item" data-vulnerable="{{ '1' if finding.vulnerable else '0' }}" data-confidence="{{ finding.confidence }}">
+                        <div class="finding-item" data-confidence="{{ finding.confidence }}" data-score="{{ finding.exploitability_score }}">
                             <div class="finding-row">
-                                <strong>{{ finding.name }}</strong>
-                                <span class="badge {{ 'malicious' if finding.vulnerable else 'safe' }}">
-                                    {{ 'Issue Detected' if finding.vulnerable else 'No Issue' }}
+                                <strong>{{ finding.vulnerability }}</strong>
+                                <span class="badge {{ 'safe' if finding.exploitability_score < 1.5 else 'malicious' }}">
+                                    {{ 'Informational' if finding.exploitability_score < 1.5 else 'Issue Detected' }}
                                 </span>
                             </div>
-                            <p class="muted">{{ finding.details }}</p>
-                            <span class="confidence {{ finding.confidence|lower }}">{{ finding.confidence }} confidence</span>
+                            <p>{{ finding.explanation }}</p>
+                            <p class="muted">Severity: {{ finding.severity }} • Exploitability: {{ finding.exploitability_score }} / 10 • Mitigation Present: {{ 'Yes' if finding.mitigation_present else 'No' }}</p>
+                            <div class="confidence-meter-wrap">
+                                <div class="confidence-meter-label">Confidence {{ finding.confidence }}%</div>
+                                <div class="confidence-meter"><span style="width: {{ finding.confidence }}%"></span></div>
+                            </div>
                         </div>
                         {% endfor %}
                     </div>

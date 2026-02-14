@@ -86,3 +86,9 @@ input, select {
 @media (max-width: 860px) {
   .dashboard-grid, .result-grid { grid-template-columns: 1fr; }
 }
+
+.stage-json { white-space: pre-wrap; background: #020617; padding: 10px; border-radius: 8px; color: #cbd5e1; font-size: 12px; overflow-x: auto; }
+.confidence-meter-wrap { margin-top: 8px; }
+.confidence-meter-label { font-size: 12px; color: var(--muted); margin-bottom: 5px; }
+.confidence-meter { height: 10px; background: #1e293b; border-radius: 999px; overflow: hidden; border: 1px solid #334155; }
+.confidence-meter span { display: block; height: 100%; background: linear-gradient(90deg, #3b82f6, #22c55e); }
