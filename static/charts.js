@@ -1,18 +1,38 @@
 (function () {
-  // Minimal helper for future chart wiring (client-only, no framework dependency)
-  const findings = document.querySelectorAll('.finding-item');
-  if (!findings.length) return;
+  const canvas = document.getElementById('owaspChart');
+  if (!canvas || typeof Chart === 'undefined') return;
 
-  const total = findings.length;
-  let issues = 0;
-  findings.forEach((el) => {
-    if (el.textContent.includes('Issue Detected')) issues += 1;
+  const findings = JSON.parse(canvas.dataset.findings || '[]');
+  const issueCount = findings.filter((f) => f.vulnerable).length;
+  const safeCount = findings.length - issueCount;
+
+  const confidenceMap = { High: 0, Medium: 0, Low: 0, Informational: 0 };
+  findings.forEach((f) => {
+    confidenceMap[f.confidence] = (confidenceMap[f.confidence] || 0) + 1;
   });
 
-  const panel = document.createElement('p');
-  panel.className = 'muted';
-  panel.textContent = `Vulnerability breakdown: ${issues} / ${total} controls flagged.`;
+  new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: ['Issue Detected', 'No Issue'],
+      datasets: [{
+        data: [issueCount, safeCount],
+        backgroundColor: ['#ef4444', '#16a34a'],
+        borderColor: '#0f172a',
+        borderWidth: 2,
+      }],
+    },
+    options: {
+      plugins: {
+        legend: { labels: { color: '#e2e8f0' } },
+        tooltip: { enabled: true },
+      },
+    },
+  });
 
-  const target = document.querySelector('.finding-list');
-  if (target) target.prepend(panel);
+  const breakdown = document.createElement('p');
+  breakdown.className = 'muted';
+  breakdown.textContent = `Confidence mix — High: ${confidenceMap.High}, Medium: ${confidenceMap.Medium}, Low: ${confidenceMap.Low}, Informational: ${confidenceMap.Informational}`;
+
+  canvas.parentElement.appendChild(breakdown);
 })();
