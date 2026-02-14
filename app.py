@@ -156,9 +156,9 @@ def create_app() -> Flask:
 
             executive_summary = (
                 f"The target {normalized} was classified as {phishing_result} with a phishing probability of "
-                f"{round(phishing_probability * 100, 2)}%. The OWASP Top 5 assessment produced {len(findings)} domain-level "
+                f"{round(phishing_probability * 100, 2)}%. The SecureScan Pro v5 OWASP Top 5 assessment produced {len(findings)} domain-level "
                 f"findings with an average confidence of {owasp_scan['confidence_average']}%. "
-                f"Overall risk posture is {cvss['severity']} (CVSS {cvss['score']})."
+                f"Overall weighted risk posture is {cvss['severity']} (CVSS {cvss['score']})."
             )
 
             db.session.add(
@@ -190,6 +190,10 @@ def create_app() -> Flask:
                 "open_ports": open_ports,
                 "executive_summary": executive_summary,
                 "recommendations": recommendations,
+                "framework": owasp_scan.get("framework", "SecureScan Pro v5"),
+                "scan_model": owasp_scan.get("scan_model", "Defensive-only passive behavioral validation"),
+                "risk_model": owasp_scan.get("risk_model"),
+                "limitations": owasp_scan.get("limitations", []),
             }
             session["last_scan"] = result_payload
             return render_template("result.html", **result_payload)
