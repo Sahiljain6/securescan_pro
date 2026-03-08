@@ -89,8 +89,10 @@
             .then((payload) => {
                 const severity = payload.severity_distribution && Object.keys(payload.severity_distribution).length ? payload.severity_distribution : { Informational: 1 };
                 const scannerComparison = payload.scanner_comparison && Object.keys(payload.scanner_comparison).length ? payload.scanner_comparison : { "No Findings": 1 };
-                const owaspCategories = payload.owasp_categories && Object.keys(payload.owasp_categories).length ? payload.owasp_categories : { "No OWASP Mapping": 1 };
-                const heatmap = payload.heatmap && Object.keys(payload.heatmap).length ? payload.heatmap : { "No Data::Informational": 1 };
+                const owaspCategories = payload.owasp_categories && Object.keys(payload.owasp_categories).length ? payload.owasp_categories : { "Security Misconfiguration": 1 };
+                const missingHeaders = payload.missing_headers && Object.keys(payload.missing_headers).length ? payload.missing_headers : { "None Missing": 1 };
+                const openPorts = payload.open_ports && Object.keys(payload.open_ports).length ? payload.open_ports : { "No Open Ports": 1 };
+                const heatmap = payload.heatmap && Object.keys(payload.heatmap).length ? payload.heatmap : { "Passive::Low": 1 };
                 const riskScore = Number(payload.risk_score || 0);
                 const aiSummary = payload.ai_analysis?.summary || payload.message || "Run a scan to populate AI explanation.";
                 const riskText = document.getElementById("dashboardRiskText");
@@ -116,6 +118,18 @@
                     type: "doughnut",
                     data: { labels: Object.keys(owaspCategories), datasets: [{ data: Object.values(owaspCategories), backgroundColor: palette }] },
                     options: { responsive: true },
+                });
+
+                createChart("dashboardMissingHeadersChart", {
+                    type: "bar",
+                    data: { labels: Object.keys(missingHeaders), datasets: [{ label: "Count", data: Object.values(missingHeaders), backgroundColor: "rgba(234,179,8,0.6)" }] },
+                    options: { responsive: true, scales: { y: { beginAtZero: true } } },
+                });
+
+                createChart("dashboardOpenPortsChart", {
+                    type: "bar",
+                    data: { labels: Object.keys(openPorts), datasets: [{ label: "Open", data: Object.values(openPorts), backgroundColor: "rgba(248,113,113,0.6)" }] },
+                    options: { responsive: true, scales: { y: { beginAtZero: true } } },
                 });
 
                 createChart("dashboardHeatmapChart", {

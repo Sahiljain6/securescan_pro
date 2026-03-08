@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureScan Pro v6 | Scan Result</title>
+    <title>SecureScan Pro | Offline Scan Result</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -11,7 +11,7 @@
     <main class="container">
         <section class="glass-card">
             <header class="top-bar">
-                <h1>Result: {{ url }}</h1>
+                <h1>Offline Result: {{ url }}</h1>
                 <div class="actions">
                     <a class="btn btn-ghost" href="{{ url_for('dashboard') }}">Dashboard</a>
                     <a class="btn btn-primary" href="{{ url_for('download_report') }}">Download PDF Report</a>
@@ -20,60 +20,22 @@
 
             <div class="result-grid">
                 <article class="card">
-                    <h2>Assessment Context</h2>
-                    <p><strong>{{ framework }}</strong></p>
-                    <p class="muted">{{ scan_model }}</p>
-                    <p class="muted">Scan time: {{ timestamp }}</p>
-                    <p class="muted">Hybrid Pipeline: {{ hybrid_architecture }}</p>
-                    <p class="muted">Hybrid ML Feature Vector: {{ scanner_ml_summary.feature_vector }} | Risk Band: {{ scanner_ml_summary.risk_band }} ({{ scanner_ml_summary.score }}/10)</p>
+                    <h2>Risk Posture</h2>
+                    <p class="cvss cvss-{{ cvss_severity|lower }}">Risk {{ cvss_score }} / 10 ({{ cvss_severity }})</p>
+                    <p class="muted">{{ risk_model }}</p>
+                    <p class="muted">TLS: {{ json_report.tls_status }} | Redirects: {{ json_report.redirects }}</p>
                 </article>
 
                 <article class="card">
-                    <h2>Risk Posture</h2>
-                    <p class="cvss cvss-{{ cvss_severity|lower }}">CVSS {{ cvss_score }} / 10 ({{ cvss_severity }})</p>
-                    <p class="muted">{{ risk_model }}</p>
-                    <div class="confidence-meter-wrap">
-                        <div class="confidence-meter-label">Confidence Meter {{ confidence_average }}%</div>
-                        <div class="confidence-meter"><span style="width: {{ confidence_average }}%"></span></div>
-                    </div>
-                    <p class="muted">Scanner status: {{ scanner_status }}</p>
+                    <h2>ML Summary</h2>
+                    <p class="muted">Feature vector: {{ scanner_ml_summary.feature_vector }}</p>
+                    <p class="muted">Predicted band: {{ scanner_ml_summary.risk_band }}</p>
+                    <p class="muted">Engine confidence proxy: {{ confidence_average }}%</p>
                 </article>
 
                 <article class="card full-width">
-                    <h2>Threat Intelligence Snapshot</h2>
-                    <p class="muted">VirusTotal: {{ threat_intel.virustotal }}</p>
-                    <p class="muted">Security Headers: {{ threat_intel.security_headers }}</p>
-                    <p class="muted">Shodan: {{ threat_intel.shodan }}</p>
-                </article>
-
-
-                <article class="card full-width">
-                    <h2>AI Risk Analysis</h2>
-                    <p class="muted"><strong>Engine:</strong> {{ ai_analysis.engine }}{% if ai_analysis.model %} ({{ ai_analysis.model }}){% endif %}</p>
-                    <p class="muted">{{ ai_analysis.summary }}</p>
-                    {% if ai_analysis.reason %}<p class="muted">Fallback reason: {{ ai_analysis.reason }}</p>{% endif %}
-                    <p class="muted">Risk Score Gauge: {{ hybrid_metrics.risk_score }} / 10</p>
-                    <div class="confidence-meter"><span style="width: {{ (hybrid_metrics.risk_score * 10)|round(0) }}%"></span></div>
-                </article>
-
-                <article class="card full-width">
-                    <h2>Control Domain Breakdown</h2>
-                    <canvas id="owaspChart" data-domains='{{ domain_breakdown|tojson }}'></canvas>
-                </article>
-
-                <article class="card full-width">
-                    <h2>OWASP Top 5 Radar</h2>
-                    <canvas id="radarChart" data-domains='{{ domain_breakdown|tojson }}'></canvas>
-                </article>
-
-                <article class="card full-width">
-                    <h2>Multi-Scanner Comparison</h2>
-                    <canvas id="scannerChart" data-scanners='{{ hybrid_metrics.vulnerabilities_by_scanner|tojson }}'></canvas>
-                </article>
-
-                <article class="card full-width">
-                    <h2>OWASP Category Breakdown (Hybrid)</h2>
-                    <canvas id="owaspHybridChart" data-owasp='{{ hybrid_metrics.owasp_breakdown|tojson }}'></canvas>
+                    <h2>Scan Output JSON</h2>
+                    <pre>{{ json_report|tojson(indent=2) }}</pre>
                 </article>
 
                 <article class="card full-width">
@@ -82,32 +44,28 @@
                 </article>
 
                 <article class="card full-width">
-                    <h2>Vulnerability Heatmap</h2>
-                    <canvas id="heatmapChart" data-heatmap='{{ hybrid_metrics.severity_heatmap|tojson }}'></canvas>
+                    <h2>Open Ports</h2>
+                    <canvas id="scannerChart" data-scanners='{{ dashboard_data.open_ports|tojson }}'></canvas>
                 </article>
 
                 <article class="card full-width">
-                    <h2>Confidence Aggregation</h2>
-                    <canvas id="confidenceChart" data-confidence='{{ hybrid_metrics.confidence_aggregation|tojson }}'></canvas>
+                    <h2>Missing Headers</h2>
+                    <canvas id="owaspHybridChart" data-owasp='{{ dashboard_data.missing_headers|tojson }}'></canvas>
                 </article>
 
                 <article class="card full-width">
-                    <h2>Unified Vulnerability List</h2>
+                    <h2>Findings</h2>
                     <div class="finding-list">
                         {% for finding in hybrid_findings %}
                         <div class="finding-item">
                             <div class="finding-row">
                                 <strong>{{ finding.vulnerability }}</strong>
-                                <span class="badge {{ (finding.severity or finding.ml.severity)|lower }}">{{ finding.severity or finding.ml.severity }}</span>
+                                <span class="badge {{ finding.severity|lower }}">{{ finding.severity }}</span>
                             </div>
-                            <p><strong>Scanners:</strong> {{ finding.scanner_sources|join(', ') }} | <strong>Endpoint:</strong> {{ finding.endpoint }}</p>
-                            <p class="muted">OWASP: {{ finding.owasp_category }} • Consensus {{ finding.consensus_score }} • Priority {{ finding.ml.priority }}</p>
-                            <p class="muted">Risk {{ finding.risk.cvss_score }}/10 ({{ finding.risk.severity }}) | FP Probability {{ finding.ml.false_positive_probability }}</p>
-                            <p class="muted">Mapped CVEs: {{ finding.intel.cve_ids|join(', ') if finding.intel.cve_ids else 'None' }}</p>
-                            <p class="muted">Classification: {{ finding.classification }} | Mitigation: {{ finding.mitigation }}</p>
+                            <p class="muted">Endpoint: {{ finding.endpoint }}</p>
                         </div>
                         {% else %}
-                        <p class="muted">No hybrid findings were returned. Ensure ZAP/Nikto/Burp services are reachable.</p>
+                        <p class="muted">No findings detected.</p>
                         {% endfor %}
                     </div>
                 </article>

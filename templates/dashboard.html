@@ -13,7 +13,7 @@
             <header class="top-bar">
                 <div>
                     <h1>SecureScan Pro v6 Dashboard</h1>
-                    <p class="muted">Unified multi-scanner and threat-intel pipeline with OWASP ZAP, Nikto, Burp, VirusTotal, SecurityHeaders, Shodan, and NVD.</p>
+                    <p class="muted">Offline passive security assessment pipeline (HTTP, headers, TLS, redirects, and port scanning) with no external APIs.</p>
                 </div>
                 <a href="{{ url_for('logout') }}" class="btn btn-ghost">Logout</a>
             </header>
@@ -79,6 +79,17 @@
                     <h2>Scanner Comparison</h2>
                     <canvas id="dashboardScannerChart"></canvas>
                 </article>
+
+                <article class="card full-width">
+                    <h2>Missing Security Headers</h2>
+                    <canvas id="dashboardMissingHeadersChart"></canvas>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Open Ports</h2>
+                    <canvas id="dashboardOpenPortsChart"></canvas>
+                </article>
+
 
                 <article class="card full-width">
                     <h2>OWASP Category Breakdown</h2>
