@@ -15,6 +15,7 @@ from owasp_scanner import run_owasp_scan
 from port_scanner import scan_ports
 from scanner import scan_url
 from hybrid_orchestrator import HybridVulnerabilityOrchestrator
+from ml_model import analyze_vulnerabilities
 
 load_dotenv()
 
@@ -84,6 +85,8 @@ def login_required(fn):
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    app.config["OPENAI_API_KEY_CONFIGURED"] = bool(os.getenv("OPENAI_API_KEY"))
 
     db_url = os.getenv("DATABASE_URL", "").strip()
     if db_url:
@@ -223,6 +226,7 @@ def create_app() -> Flask:
 
         hybrid_scan = HybridVulnerabilityOrchestrator().run(normalized)
         report = hybrid_scan.get("json_report", {})
+        ai_module_output = analyze_vulnerabilities(report.get("vulnerabilities", hybrid_scan.get("findings", [])))
         return jsonify(
             {
                 "vulnerabilities": report.get("vulnerabilities", hybrid_scan.get("findings", [])),
@@ -230,11 +234,23 @@ def create_app() -> Flask:
                 "owasp_categories": report.get("owasp_categories", {}),
                 "risk_score": report.get("risk_score", 0),
                 "ai_analysis": report.get("ai_analysis", hybrid_scan.get("ai_analysis", {})),
+                "ml_model_ai_analysis": ai_module_output,
                 "target": normalized,
                 "scanner_status": hybrid_scan.get("scanner_status", {}),
                 "threat_intel": hybrid_scan.get("threat_intel", {}),
                 "dashboard_data": hybrid_scan.get("dashboard_data", {}),
                 "scanner_ml_summary": hybrid_scan.get("scanner_ml_summary", {}),
+            }
+        )
+
+
+    @app.get("/api/ai-health")
+    @login_required
+    def ai_health_api():
+        return jsonify(
+            {
+                "openai_api_key_configured": bool(os.getenv("OPENAI_API_KEY")),
+                "openai_model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
             }
         )
 
