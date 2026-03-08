@@ -16,12 +16,16 @@ from scanners import BurpScanner, NiktoScanner, ZAPScanner
 
 
 class HybridVulnerabilityOrchestrator:
+    _shared_classifier: VulnerabilityClassifier | None = None
+
     def __init__(self) -> None:
         self.zap = ZAPScanner()
         self.nikto = NiktoScanner()
         self.burp = BurpScanner()
         self.aggregator = VulnerabilityAggregator()
-        self.classifier = VulnerabilityClassifier()
+        if HybridVulnerabilityOrchestrator._shared_classifier is None:
+            HybridVulnerabilityOrchestrator._shared_classifier = VulnerabilityClassifier()
+        self.classifier = HybridVulnerabilityOrchestrator._shared_classifier
         self.ai_engine = AISecurityEngine()
         self.nvd = NVDLookup(api_key=os.getenv("NVD_API_KEY"))
         self.virustotal = VirusTotalLookup(api_key=os.getenv("VIRUSTOTAL_API_KEY"))

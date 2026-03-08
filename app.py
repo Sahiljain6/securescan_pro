@@ -95,6 +95,8 @@ def create_app() -> Flask:
         app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 
     db.init_app(app)
+    hybrid_orchestrator = HybridVulnerabilityOrchestrator()
+
     with app.app_context():
         db.create_all()
 
@@ -149,7 +151,7 @@ def create_app() -> Flask:
             findings = owasp_scan["findings"]
             cvss = score_findings(findings)
             open_ports = scan_ports(normalized)
-            hybrid_scan = HybridVulnerabilityOrchestrator().run(normalized)
+            hybrid_scan = hybrid_orchestrator.run(normalized)
 
             recommendations = [
                 "Validate and sanitize all input server-side and apply strict contextual output encoding.",
@@ -224,7 +226,7 @@ def create_app() -> Flask:
         if not _valid_url(normalized):
             return jsonify({"error": "Invalid URL"}), 400
 
-        hybrid_scan = HybridVulnerabilityOrchestrator().run(normalized)
+        hybrid_scan = hybrid_orchestrator.run(normalized)
         report = hybrid_scan.get("json_report", {})
         ai_module_output = analyze_vulnerabilities(report.get("vulnerabilities", hybrid_scan.get("findings", [])))
         return jsonify(
