@@ -3,16 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureScan Pro v5 | Dashboard</title>
+    <title>SecureScan Pro v6 | Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <main class="container">
         <section class="glass-card">
             <header class="top-bar">
                 <div>
-                    <h1>SecureScan Pro v5 Dashboard</h1>
-                    <p class="muted">Hybrid multi-scanner orchestration across OWASP ZAP, Nikto, and Burp with ML-assisted risk prioritization.</p>
+                    <h1>SecureScan Pro v6 Dashboard</h1>
+                    <p class="muted">Unified multi-scanner and threat-intel pipeline with OWASP ZAP, Nikto, Burp, VirusTotal, SecurityHeaders, Shodan, and NVD.</p>
                 </div>
                 <a href="{{ url_for('logout') }}" class="btn btn-ghost">Logout</a>
             </header>
@@ -68,8 +69,29 @@
                         {% endfor %}
                     </div>
                 </article>
+
+                <article class="card full-width">
+                    <h2>Severity Distribution</h2>
+                    <canvas id="dashboardSeverityChart"></canvas>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Scanner Comparison</h2>
+                    <canvas id="dashboardScannerChart"></canvas>
+                </article>
+
+                <article class="card full-width">
+                    <h2>OWASP Category Breakdown</h2>
+                    <canvas id="dashboardOwaspChart"></canvas>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Vulnerability Heatmap</h2>
+                    <canvas id="dashboardHeatmapChart"></canvas>
+                </article>
             </div>
         </section>
     </main>
+    <script src="{{ url_for('static', filename='charts.js') }}"></script>
 </body>
 </html>

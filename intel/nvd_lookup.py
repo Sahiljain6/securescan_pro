@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import requests
@@ -9,7 +10,7 @@ class NVDLookup:
     """NVD CVE enrichment helper for scanner findings."""
 
     def __init__(self, api_key: str | None = None, base_url: str = "https://services.nvd.nist.gov/rest/json/cves/2.0", timeout: int = 20) -> None:
-        self.api_key = api_key
+        self.api_key = api_key or os.getenv("NVD_API_KEY")
         self.base_url = base_url
         self.timeout = timeout
 

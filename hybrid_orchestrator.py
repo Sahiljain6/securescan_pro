@@ -5,8 +5,8 @@ from collections import Counter
 from typing import Any
 from urllib.parse import urlparse
 
+from engine.aggregator import VulnerabilityAggregator
 from engine.risk_model import calculate_risk
-from engine.vulnerability_aggregator import VulnerabilityAggregator
 from intel import NVDLookup, SecurityHeadersLookup, ShodanLookup, VirusTotalLookup
 from ml.vulnerability_classifier import VulnerabilityClassifier
 from scanners import BurpScanner, NiktoScanner, ZAPScanner
@@ -25,11 +25,7 @@ class HybridVulnerabilityOrchestrator:
         self.shodan = ShodanLookup(api_key=os.getenv("SHODAN_API_KEY"))
 
     def run(self, target_url: str) -> dict[str, Any]:
-        scanner_outputs = [
-            self.zap.run(target_url),
-            self.nikto.run(target_url),
-            self.burp.run(target_url),
-        ]
+        scanner_outputs = [self.zap.run(target_url), self.nikto.run(target_url), self.burp.run(target_url)]
         aggregated = self.aggregator.aggregate(scanner_outputs)
 
         parsed = urlparse(target_url)
@@ -67,12 +63,16 @@ class HybridVulnerabilityOrchestrator:
             "shodan": self.shodan.lookup_host(hostname) if hostname else {"status": "skipped"},
         }
 
+        dashboard_data = self.aggregator.build_dashboard_payload(enriched_findings)
+
         return {
             "architecture": "Recon -> Multi-Scanner -> Aggregation -> Threat Intel Enrichment -> ML Classifier -> Risk Engine -> Dashboard",
             "scanner_outputs": scanner_outputs,
+            "scanner_status": aggregated["scanner_status"],
             "findings": enriched_findings,
             "threat_intel": threat_intel,
-            "metrics": self._build_metrics(enriched_findings),
+            "dashboard_data": dashboard_data,
+            "metrics": self._build_metrics(enriched_findings, dashboard_data),
         }
 
     @staticmethod
@@ -85,27 +85,16 @@ class HybridVulnerabilityOrchestrator:
         scores = [float(entry.get("cvss_base_score")) for entry in cves if entry.get("cvss_base_score") is not None]
         if not scores:
             return 0.0
-        return min(1.0, (max(scores) / 10.0))
+        return min(1.0, max(scores) / 10.0)
 
     @staticmethod
-    def _build_metrics(findings: list[dict[str, Any]]) -> dict[str, Any]:
-        by_scanner = Counter()
-        by_owasp = Counter()
-        severity_heatmap = Counter()
+    def _build_metrics(findings: list[dict[str, Any]], dashboard_data: dict[str, Any]) -> dict[str, Any]:
         confidence_by_severity = Counter()
-
+        severity_counts = Counter([item.get("ml", {}).get("severity", "Low") for item in findings])
         for finding in findings:
-            scanners = finding.get("scanner_sources") or [part.strip() for part in str(finding.get("scanner", "Unknown")).split(",")]
-            for scanner in scanners:
-                by_scanner[scanner] += 1
-
             severity = finding.get("ml", {}).get("severity", "Low")
-            owasp = finding.get("owasp_category", "Uncategorized")
-            by_owasp[owasp] += 1
-            severity_heatmap[f"{owasp}:{severity}"] += 1
             confidence_by_severity[severity] += float(finding.get("confidence", 0.0))
 
-        severity_counts = Counter([item.get("ml", {}).get("severity", "Low") for item in findings])
         confidence_aggregation = {
             severity: round(confidence_by_severity[severity] / count, 3)
             for severity, count in severity_counts.items()
@@ -113,13 +102,10 @@ class HybridVulnerabilityOrchestrator:
         }
 
         return {
-            "vulnerabilities_by_scanner": dict(by_scanner),
-            "owasp_breakdown": dict(by_owasp),
-            "severity_distribution": dict(severity_counts),
-            "severity_heatmap": dict(severity_heatmap),
+            "vulnerabilities_by_scanner": dashboard_data["scanner_comparison"],
+            "owasp_breakdown": dashboard_data["owasp_categories"],
+            "severity_distribution": dashboard_data["severity_distribution"],
+            "severity_heatmap": dashboard_data.get("heatmap", {}),
             "confidence_aggregation": confidence_aggregation,
-            "scanner_comparison": {
-                "max_coverage_scanner": max(by_scanner, key=by_scanner.get) if by_scanner else "N/A",
-                "total_vulnerabilities": len(findings),
-            },
+            "risk_score": dashboard_data["risk_score"],
         }

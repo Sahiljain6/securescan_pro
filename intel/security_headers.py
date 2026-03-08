@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import requests
@@ -9,7 +10,7 @@ class SecurityHeadersLookup:
     """SecurityHeaders.com API client for header posture evaluation."""
 
     def __init__(self, api_key: str | None = None, base_url: str = "https://api.securityheaders.com", timeout: int = 20) -> None:
-        self.api_key = api_key
+        self.api_key = api_key or os.getenv("SECURITY_HEADERS_API_KEY")
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
@@ -24,10 +25,9 @@ class SecurityHeadersLookup:
             )
             response.raise_for_status()
             payload = response.json()
-            grade = payload.get("grade", "N/A")
             return {
                 "status": "ok",
-                "grade": grade,
+                "grade": payload.get("grade", "N/A"),
                 "score": payload.get("score", 0),
                 "missing_headers": payload.get("missing", []),
             }
