@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import tempfile
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,9 @@ class NiktoScanner:
         self.timeout = timeout
 
     def run(self, target_url: str) -> dict[str, Any]:
+        if not shutil.which(self.binary):
+            return {"scanner": "Nikto", "status": "skipped", "error": "Nikto binary not installed", "findings": []}
+
         with tempfile.TemporaryDirectory() as tmpdir:
             output_path = Path(tmpdir) / "nikto_output.json"
             command = [

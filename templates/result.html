@@ -25,6 +25,7 @@
                     <p class="muted">{{ scan_model }}</p>
                     <p class="muted">Scan time: {{ timestamp }}</p>
                     <p class="muted">Hybrid Pipeline: {{ hybrid_architecture }}</p>
+                    <p class="muted">Hybrid ML Feature Vector: {{ scanner_ml_summary.feature_vector }} | Risk Band: {{ scanner_ml_summary.risk_band }} ({{ scanner_ml_summary.score }}/10)</p>
                 </article>
 
                 <article class="card">
@@ -43,6 +44,16 @@
                     <p class="muted">VirusTotal: {{ threat_intel.virustotal }}</p>
                     <p class="muted">Security Headers: {{ threat_intel.security_headers }}</p>
                     <p class="muted">Shodan: {{ threat_intel.shodan }}</p>
+                </article>
+
+
+                <article class="card full-width">
+                    <h2>AI Risk Analysis</h2>
+                    <p class="muted"><strong>Engine:</strong> {{ ai_analysis.engine }}{% if ai_analysis.model %} ({{ ai_analysis.model }}){% endif %}</p>
+                    <p class="muted">{{ ai_analysis.summary }}</p>
+                    {% if ai_analysis.reason %}<p class="muted">Fallback reason: {{ ai_analysis.reason }}</p>{% endif %}
+                    <p class="muted">Risk Score Gauge: {{ hybrid_metrics.risk_score }} / 10</p>
+                    <div class="confidence-meter"><span style="width: {{ (hybrid_metrics.risk_score * 10)|round(0) }}%"></span></div>
                 </article>
 
                 <article class="card full-width">
@@ -87,12 +98,13 @@
                         <div class="finding-item">
                             <div class="finding-row">
                                 <strong>{{ finding.vulnerability }}</strong>
-                                <span class="badge {{ finding.ml.severity|lower }}">{{ finding.ml.severity }}</span>
+                                <span class="badge {{ (finding.severity or finding.ml.severity)|lower }}">{{ finding.severity or finding.ml.severity }}</span>
                             </div>
                             <p><strong>Scanners:</strong> {{ finding.scanner_sources|join(', ') }} | <strong>Endpoint:</strong> {{ finding.endpoint }}</p>
                             <p class="muted">OWASP: {{ finding.owasp_category }} • Consensus {{ finding.consensus_score }} • Priority {{ finding.ml.priority }}</p>
                             <p class="muted">Risk {{ finding.risk.cvss_score }}/10 ({{ finding.risk.severity }}) | FP Probability {{ finding.ml.false_positive_probability }}</p>
                             <p class="muted">Mapped CVEs: {{ finding.intel.cve_ids|join(', ') if finding.intel.cve_ids else 'None' }}</p>
+                            <p class="muted">Classification: {{ finding.classification }} | Mitigation: {{ finding.mitigation }}</p>
                         </div>
                         {% else %}
                         <p class="muted">No hybrid findings were returned. Ensure ZAP/Nikto/Burp services are reachable.</p>

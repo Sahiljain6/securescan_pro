@@ -11,7 +11,7 @@ class ZAPScanner:
     """OWASP ZAP REST API client with normalized finding output."""
 
     def __init__(self, base_url: str | None = None, api_key: str | None = None, timeout: int = 20) -> None:
-        self.base_url = (base_url or os.getenv("ZAP_API_URL", "http://127.0.0.1:8080")).rstrip("/")
+        self.base_url = (base_url or os.getenv("ZAP_API_URL", "")).rstrip("/")
         self.api_key = api_key or os.getenv("ZAP_API_KEY", "")
         self.timeout = timeout
 
@@ -34,6 +34,8 @@ class ZAPScanner:
             time.sleep(poll_seconds)
 
     def run(self, target_url: str) -> dict[str, Any]:
+        if not self.base_url:
+            return {"scanner": "OWASP ZAP", "status": "skipped", "error": "ZAP_API_URL not configured", "findings": []}
         try:
             spider = self._get_json("/JSON/spider/action/scan/", {"url": target_url, "maxChildren": 20})
             self._wait_for_completion("/JSON/spider/view/status/", "status", spider.get("scan", "0"))

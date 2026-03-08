@@ -10,11 +10,13 @@ class BurpScanner:
     """Burp Suite Enterprise/adapter API integration with normalized finding output."""
 
     def __init__(self, api_url: str | None = None, api_key: str | None = None, timeout: int = 20) -> None:
-        self.api_url = (api_url or os.getenv("BURP_API_URL", "http://127.0.0.1:1337")).rstrip("/")
+        self.api_url = (api_url or os.getenv("BURP_API_URL", "")).rstrip("/")
         self.api_key = api_key or os.getenv("BURP_API_KEY", "")
         self.timeout = timeout
 
     def run(self, target_url: str) -> dict[str, Any]:
+        if not self.api_url:
+            return {"scanner": "Burp Suite", "status": "skipped", "error": "BURP_API_URL not configured", "findings": []}
         try:
             headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
             response = requests.post(f"{self.api_url}/v1/scan", json={"target": target_url}, headers=headers, timeout=self.timeout)

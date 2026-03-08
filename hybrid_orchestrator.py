@@ -5,10 +5,13 @@ from collections import Counter
 from typing import Any
 from urllib.parse import urlparse
 
+from ai_security_engine import AISecurityEngine
 from engine.aggregator import VulnerabilityAggregator
 from engine.risk_model import calculate_risk
 from intel import NVDLookup, SecurityHeadersLookup, ShodanLookup, VirusTotalLookup
 from ml.vulnerability_classifier import VulnerabilityClassifier
+from ml_model import model
+from scanner import run_defensive_web_checks
 from scanners import BurpScanner, NiktoScanner, ZAPScanner
 
 
@@ -19,13 +22,19 @@ class HybridVulnerabilityOrchestrator:
         self.burp = BurpScanner()
         self.aggregator = VulnerabilityAggregator()
         self.classifier = VulnerabilityClassifier()
+        self.ai_engine = AISecurityEngine()
         self.nvd = NVDLookup(api_key=os.getenv("NVD_API_KEY"))
         self.virustotal = VirusTotalLookup(api_key=os.getenv("VIRUSTOTAL_API_KEY"))
         self.security_headers = SecurityHeadersLookup(api_key=os.getenv("SECURITY_HEADERS_API_KEY"))
         self.shodan = ShodanLookup(api_key=os.getenv("SHODAN_API_KEY"))
 
     def run(self, target_url: str) -> dict[str, Any]:
-        scanner_outputs = [self.zap.run(target_url), self.nikto.run(target_url), self.burp.run(target_url)]
+        scanner_outputs = [
+            run_defensive_web_checks(target_url),
+            self.zap.run(target_url),
+            self.nikto.run(target_url),
+            self.burp.run(target_url),
+        ]
         aggregated = self.aggregator.aggregate(scanner_outputs)
 
         parsed = urlparse(target_url)
@@ -37,12 +46,12 @@ class HybridVulnerabilityOrchestrator:
             intel_result = self.nvd.lookup(finding.get("vulnerability", ""))
             cves = intel_result.get("cves", [])
             cvss_impact = self._impact_from_cvss(cves)
+            confidence = float(max(finding.get("confidence", 0.6), ml_result.get("model_confidence", 0.6)))
             risk_result = calculate_risk(
                 exposure=0.85,
                 exploitability=finding.get("confidence", 0.6),
                 impact=cvss_impact or self._impact_from_severity(ml_result["severity"]),
-                mitigation_strength=0.3,
-                scanner_count=int(finding.get("scanner_count", 1)),
+                confidence=confidence,
             )
             enriched_findings.append(
                 {
@@ -64,15 +73,32 @@ class HybridVulnerabilityOrchestrator:
         }
 
         dashboard_data = self.aggregator.build_dashboard_payload(enriched_findings)
+        ai_analysis = self.ai_engine.analyze_vulnerability(enriched_findings)
+
+        scanner_ml_summary = model.classify_scanner_risk(ai_analysis.get("vulnerabilities", enriched_findings))
+
+        dashboard_data["severity_distribution"] = ai_analysis.get("severity_distribution", dashboard_data.get("severity_distribution", {}))
+        dashboard_data["owasp_categories"] = ai_analysis.get("owasp_categories", dashboard_data.get("owasp_categories", {}))
+        dashboard_data["risk_score"] = ai_analysis.get("risk_score", dashboard_data.get("risk_score", 0))
+        dashboard_data["ai_analysis"] = ai_analysis.get("ai_analysis", {})
 
         return {
-            "architecture": "Recon -> Multi-Scanner -> Aggregation -> Threat Intel Enrichment -> ML Classifier -> Risk Engine -> Dashboard",
+            "architecture": "Recon -> Passive Checks -> Multi-Scanner -> Aggregation -> Threat Intel -> ML Feature Extraction -> AI Risk Analysis -> Reporting",
             "scanner_outputs": scanner_outputs,
             "scanner_status": aggregated["scanner_status"],
-            "findings": enriched_findings,
+            "findings": ai_analysis.get("vulnerabilities", enriched_findings),
             "threat_intel": threat_intel,
             "dashboard_data": dashboard_data,
-            "metrics": self._build_metrics(enriched_findings, dashboard_data),
+            "ai_analysis": ai_analysis.get("ai_analysis", {}),
+            "scanner_ml_summary": scanner_ml_summary,
+            "metrics": self._build_metrics(ai_analysis.get("vulnerabilities", enriched_findings), dashboard_data),
+            "json_report": {
+                "vulnerabilities": ai_analysis.get("vulnerabilities", enriched_findings),
+                "severity_distribution": dashboard_data.get("severity_distribution", {}),
+                "owasp_categories": dashboard_data.get("owasp_categories", {}),
+                "risk_score": dashboard_data.get("risk_score", 0),
+                "ai_analysis": {**ai_analysis.get("ai_analysis", {}), "ml_summary": scanner_ml_summary},
+            },
         }
 
     @staticmethod
@@ -90,10 +116,11 @@ class HybridVulnerabilityOrchestrator:
     @staticmethod
     def _build_metrics(findings: list[dict[str, Any]], dashboard_data: dict[str, Any]) -> dict[str, Any]:
         confidence_by_severity = Counter()
-        severity_counts = Counter([item.get("ml", {}).get("severity", "Low") for item in findings])
+        severity_counts = Counter([item.get("severity") or item.get("ml", {}).get("severity", "Low") for item in findings])
         for finding in findings:
-            severity = finding.get("ml", {}).get("severity", "Low")
-            confidence_by_severity[severity] += float(finding.get("confidence", 0.0))
+            severity = finding.get("severity") or finding.get("ml", {}).get("severity", "Low")
+            confidence = float(finding.get("risk", {}).get("confidence", finding.get("confidence", 0.0)))
+            confidence_by_severity[severity] += confidence
 
         confidence_aggregation = {
             severity: round(confidence_by_severity[severity] / count, 3)
@@ -102,10 +129,10 @@ class HybridVulnerabilityOrchestrator:
         }
 
         return {
-            "vulnerabilities_by_scanner": dashboard_data["scanner_comparison"],
-            "owasp_breakdown": dashboard_data["owasp_categories"],
-            "severity_distribution": dashboard_data["severity_distribution"],
+            "vulnerabilities_by_scanner": dashboard_data.get("scanner_comparison", {}),
+            "owasp_breakdown": dashboard_data.get("owasp_categories", {}),
+            "severity_distribution": dashboard_data.get("severity_distribution", {}),
             "severity_heatmap": dashboard_data.get("heatmap", {}),
             "confidence_aggregation": confidence_aggregation,
-            "risk_score": dashboard_data["risk_score"],
+            "risk_score": dashboard_data.get("risk_score", 0),
         }
