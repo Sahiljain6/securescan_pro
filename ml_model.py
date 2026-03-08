@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import json
 import math
+import os
 import re
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import urlparse
+
 
 
 @dataclass
@@ -97,3 +101,114 @@ class LightweightPhishingModel:
 
 
 model = LightweightPhishingModel()
+
+
+def _fallback_vulnerability_analysis(vulnerabilities: list[dict[str, Any]], reason: str) -> dict[str, Any]:
+    normalized: list[dict[str, Any]] = []
+    for vuln in vulnerabilities:
+        severity = str(vuln.get("severity") or vuln.get("ml", {}).get("severity") or "Low")
+        details = {
+            **vuln,
+            "severity": severity,
+            "classification": vuln.get("classification", "General Web Vulnerability"),
+            "explanation": vuln.get(
+                "explanation",
+                "Fallback analysis used because AI service is unavailable or not configured.",
+            ),
+        }
+        normalized.append(details)
+
+    severity_distribution = dict(Counter(item.get("severity", "Low") for item in normalized))
+    return {
+        "engine": "fallback",
+        "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        "summary": "Deterministic fallback analysis completed.",
+        "reason": reason,
+        "severity_distribution": severity_distribution,
+        "vulnerabilities": normalized,
+    }
+
+
+def analyze_vulnerabilities(vulnerabilities: list[dict[str, Any]]) -> dict[str, Any]:
+    """Analyze scanner findings with OpenAI and return structured severity + explanation output."""
+    if not vulnerabilities:
+        return {
+            "engine": "fallback",
+            "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            "summary": "No vulnerabilities were provided for analysis.",
+            "severity_distribution": {"Informational": 1},
+            "vulnerabilities": [],
+        }
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return _fallback_vulnerability_analysis(vulnerabilities, "OPENAI_API_KEY is not configured")
+
+    try:
+        from openai import OpenAI
+    except Exception as exc:  # noqa: BLE001
+        return _fallback_vulnerability_analysis(vulnerabilities, f"OpenAI SDK unavailable: {exc}")
+
+    client = OpenAI(api_key=api_key)
+    prompt = {
+        "task": "Classify vulnerabilities by severity and explain each finding.",
+        "schema": {
+            "summary": "string",
+            "vulnerability_analysis": [
+                {
+                    "vulnerability": "string",
+                    "severity": "Informational|Low|Medium|High|Critical",
+                    "classification": "string",
+                    "explanation": "string",
+                }
+            ],
+        },
+        "input": vulnerabilities,
+    }
+
+    try:
+        response = client.chat.completions.create(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            temperature=0.1,
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a defensive cybersecurity analyst. Respond with JSON only. "
+                        "Classify vulnerabilities and provide concise explanations."
+                    ),
+                },
+                {"role": "user", "content": str(prompt)},
+            ],
+        )
+        content = response.choices[0].message.content or "{}"
+        ai_payload = json.loads(content)
+    except Exception as exc:  # noqa: BLE001
+        return _fallback_vulnerability_analysis(vulnerabilities, f"OpenAI analysis failed: {exc}")
+
+    ai_items = ai_payload.get("vulnerability_analysis", [])
+    ai_by_name = {str(item.get("vulnerability", "")).strip().lower(): item for item in ai_items}
+    merged: list[dict[str, Any]] = []
+    for vuln in vulnerabilities:
+        vuln_name = str(vuln.get("vulnerability", "")).strip()
+        ai_item = ai_by_name.get(vuln_name.lower(), {})
+        merged.append(
+            {
+                **vuln,
+                "severity": ai_item.get("severity", vuln.get("severity", "Low")),
+                "classification": ai_item.get("classification", "General Web Vulnerability"),
+                "explanation": ai_item.get(
+                    "explanation",
+                    "No detailed explanation returned by AI service.",
+                ),
+            }
+        )
+
+    return {
+        "engine": "openai",
+        "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        "summary": ai_payload.get("summary", "AI vulnerability analysis completed."),
+        "severity_distribution": dict(Counter(item.get("severity", "Low") for item in merged)),
+        "vulnerabilities": merged,
+    }
