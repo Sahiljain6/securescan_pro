@@ -1,31 +1,23 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 
 import requests
 
 
 class BurpScanner:
-    """Burp API/proxy integration with normalized finding output."""
+    """Burp Suite Enterprise/adapter API integration with normalized finding output."""
 
-    def __init__(self, api_url: str = "http://127.0.0.1:1337", timeout: int = 20) -> None:
-        self.api_url = api_url.rstrip("/")
+    def __init__(self, api_url: str | None = None, api_key: str | None = None, timeout: int = 20) -> None:
+        self.api_url = (api_url or os.getenv("BURP_API_URL", "http://127.0.0.1:1337")).rstrip("/")
+        self.api_key = api_key or os.getenv("BURP_API_KEY", "")
         self.timeout = timeout
 
     def run(self, target_url: str) -> dict[str, Any]:
-        """
-        Expects a Burp-compatible endpoint exposing scan issues.
-        Example response schema:
-        {
-          "issues": [{"name": "XSS", "severity": "high", "path": "/search", "confidence": "Firm", ...}]
-        }
-        """
         try:
-            response = requests.post(
-                f"{self.api_url}/v1/scan",
-                json={"target": target_url},
-                timeout=self.timeout,
-            )
+            headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+            response = requests.post(f"{self.api_url}/v1/scan", json={"target": target_url}, headers=headers, timeout=self.timeout)
             response.raise_for_status()
             payload = response.json()
             findings = [self._normalize_issue(issue) for issue in payload.get("issues", [])]
@@ -37,9 +29,9 @@ class BurpScanner:
         confidence_map = {"Tentative": 0.45, "Firm": 0.75, "Certain": 0.9}
         return {
             "vulnerability": issue.get("name", "Unknown finding"),
-            "scanner": "Burp Suite",
             "endpoint": issue.get("path") or issue.get("url") or "",
             "severity": (issue.get("severity") or "info").title(),
+            "scanner": "Burp Suite",
             "confidence": confidence_map.get(issue.get("confidence", "Tentative"), 0.55),
             "description": issue.get("description", ""),
             "evidence": issue.get("evidence", ""),

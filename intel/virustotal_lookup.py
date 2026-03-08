@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 from urllib.parse import quote
 
@@ -10,7 +11,7 @@ class VirusTotalLookup:
     """VirusTotal domain and URL reputation checks."""
 
     def __init__(self, api_key: str | None = None, base_url: str = "https://www.virustotal.com/api/v3", timeout: int = 20) -> None:
-        self.api_key = api_key
+        self.api_key = api_key or os.getenv("VIRUSTOTAL_API_KEY")
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
 
@@ -22,13 +23,9 @@ class VirusTotalLookup:
 
     def _lookup(self, path: str) -> dict[str, Any]:
         if not self.api_key:
-            return {"status": "skipped", "malicious": 0, "suspicious": 0, "harmless": 0}
+            return {"status": "skipped", "malicious": 0, "suspicious": 0, "harmless": 0, "undetected": 0}
         try:
-            response = requests.get(
-                f"{self.base_url}{path}",
-                headers={"x-apikey": self.api_key},
-                timeout=self.timeout,
-            )
+            response = requests.get(f"{self.base_url}{path}", headers={"x-apikey": self.api_key}, timeout=self.timeout)
             response.raise_for_status()
             stats = response.json().get("data", {}).get("attributes", {}).get("last_analysis_stats", {})
             return {
@@ -39,4 +36,4 @@ class VirusTotalLookup:
                 "undetected": int(stats.get("undetected", 0)),
             }
         except Exception as exc:  # noqa: BLE001
-            return {"status": "error", "error": str(exc), "malicious": 0, "suspicious": 0, "harmless": 0}
+            return {"status": "error", "error": str(exc), "malicious": 0, "suspicious": 0, "harmless": 0, "undetected": 0}

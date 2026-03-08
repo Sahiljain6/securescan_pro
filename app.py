@@ -7,7 +7,7 @@ from hmac import compare_digest
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
-from flask import Flask, Response, abort, flash, redirect, render_template, request, session, url_for
+from flask import Flask, Response, abort, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_sqlalchemy import SQLAlchemy
 
 from cvss import score_findings
@@ -199,14 +199,50 @@ def create_app() -> Flask:
                 "hybrid_findings": hybrid_scan["findings"],
                 "hybrid_metrics": hybrid_scan["metrics"],
                 "hybrid_architecture": hybrid_scan["architecture"],
-                "scanner_status": {item.get("scanner"): item.get("status") for item in hybrid_scan["scanner_outputs"]},
+                "scanner_status": hybrid_scan.get("scanner_status", {}),
                 "threat_intel": hybrid_scan.get("threat_intel", {}),
+                "dashboard_data": hybrid_scan.get("dashboard_data", {}),
             }
             session["last_scan"] = result_payload
             return render_template("result.html", **result_payload)
 
         history = ScanRecord.query.order_by(ScanRecord.id.desc()).limit(8).all()
         return render_template("dashboard.html", lab_targets=LAB_TARGETS, history=history)
+
+
+    @app.post("/api/scan")
+    @login_required
+    def scan_api():
+        payload = request.get_json(silent=True) or {}
+        normalized = _normalize_url(payload.get("url", ""))
+        if not _valid_url(normalized):
+            return jsonify({"error": "Invalid URL"}), 400
+
+        hybrid_scan = HybridVulnerabilityOrchestrator().run(normalized)
+        return jsonify(
+            {
+                "target": normalized,
+                "vulnerabilities": hybrid_scan.get("findings", []),
+                "scanner_status": hybrid_scan.get("scanner_status", {}),
+                "threat_intel": hybrid_scan.get("threat_intel", {}),
+                "dashboard_data": hybrid_scan.get("dashboard_data", {}),
+            }
+        )
+
+    @app.get("/api/dashboard-data")
+    @login_required
+    def dashboard_data_api():
+        payload = session.get("last_scan") or {}
+        dashboard_data = payload.get("dashboard_data") or {
+            "vulnerabilities": [],
+            "severity_distribution": {"Informational": 1},
+            "scanner_comparison": {"No Findings": 1},
+            "owasp_categories": {"No OWASP Mapping": 1},
+            "heatmap": {"No Data::Informational": 1},
+            "risk_score": 0,
+            "message": "Run a scan to populate analytics.",
+        }
+        return jsonify(dashboard_data)
 
     @app.route("/report", methods=["GET"])
     @login_required
