@@ -14,6 +14,7 @@ from cvss import score_findings
 from owasp_scanner import run_owasp_scan
 from port_scanner import scan_ports
 from scanner import scan_url
+from hybrid_orchestrator import HybridVulnerabilityOrchestrator
 
 load_dotenv()
 
@@ -145,6 +146,7 @@ def create_app() -> Flask:
             findings = owasp_scan["findings"]
             cvss = score_findings(findings)
             open_ports = scan_ports(normalized)
+            hybrid_scan = HybridVulnerabilityOrchestrator().run(normalized)
 
             recommendations = [
                 "Validate and sanitize all input server-side and apply strict contextual output encoding.",
@@ -194,6 +196,10 @@ def create_app() -> Flask:
                 "scan_model": owasp_scan.get("scan_model", "Defensive-only passive behavioral validation"),
                 "risk_model": owasp_scan.get("risk_model"),
                 "limitations": owasp_scan.get("limitations", []),
+                "hybrid_findings": hybrid_scan["findings"],
+                "hybrid_metrics": hybrid_scan["metrics"],
+                "hybrid_architecture": hybrid_scan["architecture"],
+                "scanner_status": {item.get("scanner"): item.get("status") for item in hybrid_scan["scanner_outputs"]},
             }
             session["last_scan"] = result_payload
             return render_template("result.html", **result_payload)

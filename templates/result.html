@@ -24,6 +24,7 @@
                     <p><strong>{{ framework }}</strong></p>
                     <p class="muted">{{ scan_model }}</p>
                     <p class="muted">Scan time: {{ timestamp }}</p>
+                    <p class="muted">Hybrid Pipeline: {{ hybrid_architecture }}</p>
                 </article>
 
                 <article class="card">
@@ -34,6 +35,7 @@
                         <div class="confidence-meter-label">Confidence Meter {{ confidence_average }}%</div>
                         <div class="confidence-meter"><span style="width: {{ confidence_average }}%"></span></div>
                     </div>
+                    <p class="muted">Scanner status: {{ scanner_status }}</p>
                 </article>
 
                 <article class="card full-width">
@@ -44,6 +46,35 @@
                 <article class="card full-width">
                     <h2>OWASP Top 5 Radar</h2>
                     <canvas id="radarChart" data-domains='{{ domain_breakdown|tojson }}'></canvas>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Multi-Scanner Comparison</h2>
+                    <canvas id="scannerChart" data-scanners='{{ hybrid_metrics.vulnerabilities_by_scanner|tojson }}'></canvas>
+                </article>
+
+                <article class="card full-width">
+                    <h2>OWASP Category Breakdown (Hybrid)</h2>
+                    <canvas id="owaspHybridChart" data-owasp='{{ hybrid_metrics.owasp_breakdown|tojson }}'></canvas>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Unified Vulnerability List</h2>
+                    <div class="finding-list">
+                        {% for finding in hybrid_findings %}
+                        <div class="finding-item">
+                            <div class="finding-row">
+                                <strong>{{ finding.vulnerability }}</strong>
+                                <span class="badge {{ finding.ml.severity|lower }}">{{ finding.ml.severity }}</span>
+                            </div>
+                            <p><strong>Scanners:</strong> {{ finding.scanner }} | <strong>Endpoint:</strong> {{ finding.endpoint }}</p>
+                            <p class="muted">OWASP: {{ finding.owasp_category }} • Confidence {{ (finding.confidence * 100) | round(1) }}% • Priority {{ finding.ml.priority }}</p>
+                            <p class="muted">Risk {{ finding.risk.risk }} ({{ finding.risk.severity }}) | Consensus {{ finding.risk.consensus_factor }}</p>
+                        </div>
+                        {% else %}
+                        <p class="muted">No hybrid findings were returned. Ensure ZAP/Nikto/Burp services are reachable.</p>
+                        {% endfor %}
+                    </div>
                 </article>
 
                 <article class="card full-width">
@@ -58,28 +89,9 @@
                             <p>{{ finding.summary }}</p>
                             <p class="muted">Weighted Risk = {{ finding.risk_output.weighted_risk }} • Confidence {{ finding.confidence }}%</p>
                             <p class="muted">Equation: {{ finding.risk_equation }}</p>
-                            <pre class="stage-json">{{ finding.risk_inputs | tojson(indent=2) }}</pre>
-                            <ul>
-                                {% for ev in finding.evidence %}
-                                <li>{{ ev.name }} (score={{ ev.score }}, reliability={{ ev.reliability }}, weight={{ ev.weight }})</li>
-                                {% endfor %}
-                            </ul>
                         </div>
                         {% endfor %}
                     </div>
-                </article>
-
-                <article class="card full-width">
-                    <h2>Multi-Stage Validation</h2>
-                    {% for stage in owasp_stages %}
-                    <pre class="stage-json">{{ stage | tojson(indent=2) }}</pre>
-                    {% endfor %}
-                </article>
-
-                <article class="card full-width">
-                    <h2>Executive Summary</h2>
-                    <p>{{ executive_summary }}</p>
-                    <a class="btn btn-ghost" href="{{ url_for('report_view') }}">Open Full Report Page</a>
                 </article>
             </div>
         </section>
