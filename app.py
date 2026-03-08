@@ -202,6 +202,9 @@ def create_app() -> Flask:
                 "scanner_status": hybrid_scan.get("scanner_status", {}),
                 "threat_intel": hybrid_scan.get("threat_intel", {}),
                 "dashboard_data": hybrid_scan.get("dashboard_data", {}),
+                "ai_analysis": hybrid_scan.get("ai_analysis", {}),
+                "json_report": hybrid_scan.get("json_report", {}),
+                "scanner_ml_summary": hybrid_scan.get("scanner_ml_summary", {}),
             }
             session["last_scan"] = result_payload
             return render_template("result.html", **result_payload)
@@ -219,13 +222,19 @@ def create_app() -> Flask:
             return jsonify({"error": "Invalid URL"}), 400
 
         hybrid_scan = HybridVulnerabilityOrchestrator().run(normalized)
+        report = hybrid_scan.get("json_report", {})
         return jsonify(
             {
+                "vulnerabilities": report.get("vulnerabilities", hybrid_scan.get("findings", [])),
+                "severity_distribution": report.get("severity_distribution", {}),
+                "owasp_categories": report.get("owasp_categories", {}),
+                "risk_score": report.get("risk_score", 0),
+                "ai_analysis": report.get("ai_analysis", hybrid_scan.get("ai_analysis", {})),
                 "target": normalized,
-                "vulnerabilities": hybrid_scan.get("findings", []),
                 "scanner_status": hybrid_scan.get("scanner_status", {}),
                 "threat_intel": hybrid_scan.get("threat_intel", {}),
                 "dashboard_data": hybrid_scan.get("dashboard_data", {}),
+                "scanner_ml_summary": hybrid_scan.get("scanner_ml_summary", {}),
             }
         )
 

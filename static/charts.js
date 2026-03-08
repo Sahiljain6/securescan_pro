@@ -87,10 +87,18 @@
         fetch("/api/dashboard-data")
             .then((response) => response.json())
             .then((payload) => {
-                const severity = payload.severity_distribution || {};
-                const scannerComparison = payload.scanner_comparison || {};
-                const owaspCategories = payload.owasp_categories || {};
-                const heatmap = payload.heatmap || {};
+                const severity = payload.severity_distribution && Object.keys(payload.severity_distribution).length ? payload.severity_distribution : { Informational: 1 };
+                const scannerComparison = payload.scanner_comparison && Object.keys(payload.scanner_comparison).length ? payload.scanner_comparison : { "No Findings": 1 };
+                const owaspCategories = payload.owasp_categories && Object.keys(payload.owasp_categories).length ? payload.owasp_categories : { "No OWASP Mapping": 1 };
+                const heatmap = payload.heatmap && Object.keys(payload.heatmap).length ? payload.heatmap : { "No Data::Informational": 1 };
+                const riskScore = Number(payload.risk_score || 0);
+                const aiSummary = payload.ai_analysis?.summary || payload.message || "Run a scan to populate AI explanation.";
+                const riskText = document.getElementById("dashboardRiskText");
+                const riskGauge = document.getElementById("dashboardRiskGauge");
+                const aiSummaryNode = document.getElementById("dashboardAiSummary");
+                if (riskText) riskText.textContent = `Risk Score: ${riskScore} / 10`;
+                if (riskGauge) riskGauge.style.width = `${Math.max(0, Math.min(100, riskScore * 10))}%`;
+                if (aiSummaryNode) aiSummaryNode.textContent = aiSummary;
 
                 createChart("dashboardSeverityChart", {
                     type: "pie",
@@ -118,6 +126,8 @@
             })
             .catch((error) => {
                 console.error("Failed to load dashboard data", error);
+                const aiSummaryNode = document.getElementById("dashboardAiSummary");
+                if (aiSummaryNode) aiSummaryNode.textContent = "Unable to load dashboard analytics due to network error.";
             });
     }
 })();

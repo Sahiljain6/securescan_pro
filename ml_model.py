@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
+from typing import Any
 from urllib.parse import urlparse
 
 
@@ -30,7 +31,7 @@ SUSPICIOUS_KEYWORDS = {
 
 
 class LightweightPhishingModel:
-    """A simple deterministic scoring model suitable for demo/lab environments."""
+    """Hybrid lightweight model for URL phishing + scanner feature risk classification."""
 
     def _extract(self, url: str) -> URLFeatures:
         parsed = urlparse(url)
@@ -64,6 +65,35 @@ class LightweightPhishingModel:
         )
         probability = 1 / (1 + math.exp(-raw_score))
         return max(0.01, min(0.99, probability))
+
+    def classify_scanner_risk(self, scanner_findings: list[dict[str, Any]]) -> dict[str, Any]:
+        """Scanner results -> feature extraction -> AI risk classification inputs -> final aggregate score."""
+        if not scanner_findings:
+            return {"feature_vector": [0, 0, 0, 0], "risk_band": "Informational", "score": 0.0}
+
+        severity_weights = {"Informational": 0.1, "Low": 0.3, "Medium": 0.6, "High": 0.8, "Critical": 1.0}
+        finding_count = len(scanner_findings)
+        avg_confidence = sum(float(item.get("confidence", 0.5)) for item in scanner_findings) / finding_count
+        avg_severity = sum(severity_weights.get(item.get("severity", "Low"), 0.3) for item in scanner_findings) / finding_count
+        scanner_diversity = len({item.get("scanner", "Unknown") for item in scanner_findings}) / 4
+
+        composite = max(0.0, min(1.0, (0.45 * avg_severity) + (0.35 * avg_confidence) + (0.20 * scanner_diversity)))
+        if composite >= 0.85:
+            band = "Critical"
+        elif composite >= 0.7:
+            band = "High"
+        elif composite >= 0.45:
+            band = "Medium"
+        elif composite >= 0.2:
+            band = "Low"
+        else:
+            band = "Informational"
+
+        return {
+            "feature_vector": [round(avg_severity, 3), round(avg_confidence, 3), round(scanner_diversity, 3), finding_count],
+            "risk_band": band,
+            "score": round(composite * 10, 2),
+        }
 
 
 model = LightweightPhishingModel()
