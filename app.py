@@ -200,6 +200,7 @@ def create_app() -> Flask:
                 "hybrid_metrics": hybrid_scan["metrics"],
                 "hybrid_architecture": hybrid_scan["architecture"],
                 "scanner_status": {item.get("scanner"): item.get("status") for item in hybrid_scan["scanner_outputs"]},
+                "threat_intel": hybrid_scan.get("threat_intel", {}),
             }
             session["last_scan"] = result_payload
             return render_template("result.html", **result_payload)

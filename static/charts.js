@@ -63,4 +63,44 @@
             options: { responsive: true },
         });
     }
+
+    const severityCanvas = document.getElementById("severityChart");
+    if (severityCanvas) {
+        const severityData = JSON.parse(severityCanvas.dataset.severity || "{}");
+        new Chart(severityCanvas, {
+            type: "pie",
+            data: {
+                labels: Object.keys(severityData),
+                datasets: [{ data: Object.values(severityData), backgroundColor: ["#ef4444", "#f97316", "#facc15", "#22c55e", "#38bdf8"] }],
+            },
+            options: { responsive: true },
+        });
+    }
+
+    const confidenceCanvas = document.getElementById("confidenceChart");
+    if (confidenceCanvas) {
+        const confidenceData = JSON.parse(confidenceCanvas.dataset.confidence || "{}");
+        new Chart(confidenceCanvas, {
+            type: "line",
+            data: {
+                labels: Object.keys(confidenceData),
+                datasets: [{ label: "Average Confidence", data: Object.values(confidenceData), borderColor: "#60a5fa", fill: false }],
+            },
+            options: { responsive: true, scales: { y: { beginAtZero: true, max: 1 } } },
+        });
+    }
+
+    const heatmapCanvas = document.getElementById("heatmapChart");
+    if (heatmapCanvas) {
+        const heatmapData = JSON.parse(heatmapCanvas.dataset.heatmap || "{}");
+        const labels = Object.keys(heatmapData);
+        new Chart(heatmapCanvas, {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [{ label: "Findings", data: Object.values(heatmapData), backgroundColor: "rgba(147, 51, 234, 0.6)" }],
+            },
+            options: { responsive: true, indexAxis: "y", scales: { x: { beginAtZero: true } } },
+        });
+    }
 })();

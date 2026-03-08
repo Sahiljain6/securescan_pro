@@ -25,23 +25,25 @@ def calculate_risk(
     mitigation_strength = clamp(mitigation_strength)
     consensus = scanner_consensus_factor(scanner_count)
 
-    risk = (exposure * exploitability * impact) * consensus * (1 - mitigation_strength)
-    risk = clamp(risk)
+    normalized_risk = (exposure * exploitability * impact) * consensus * (1 - mitigation_strength)
+    normalized_risk = clamp(normalized_risk)
+    cvss_score = round(normalized_risk * 10, 2)
 
-    if risk >= 0.8:
+    if cvss_score >= 9.0:
         severity = "Critical"
-    elif risk >= 0.6:
+    elif cvss_score >= 7.0:
         severity = "High"
-    elif risk >= 0.35:
+    elif cvss_score >= 4.0:
         severity = "Medium"
-    elif risk >= 0.15:
+    elif cvss_score >= 0.1:
         severity = "Low"
     else:
         severity = "Informational"
 
     return {
-        "risk": round(risk, 4),
+        "risk": round(normalized_risk, 4),
+        "cvss_score": cvss_score,
         "severity": severity,
         "consensus_factor": consensus,
-        "equation": "Risk = (Exposure × Exploitability × Impact) × Scanner Consensus × (1 − Mitigation Strength)",
+        "equation": "Risk = (Exposure × Exploitability × Impact) × ScannerConsensusFactor × (1 − MitigationStrength)",
     }
