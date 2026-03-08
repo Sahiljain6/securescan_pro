@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SecureScan Pro v5 | Scan Result</title>
+    <title>SecureScan Pro v6 | Scan Result</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -39,6 +39,13 @@
                 </article>
 
                 <article class="card full-width">
+                    <h2>Threat Intelligence Snapshot</h2>
+                    <p class="muted">VirusTotal: {{ threat_intel.virustotal }}</p>
+                    <p class="muted">Security Headers: {{ threat_intel.security_headers }}</p>
+                    <p class="muted">Shodan: {{ threat_intel.shodan }}</p>
+                </article>
+
+                <article class="card full-width">
                     <h2>Control Domain Breakdown</h2>
                     <canvas id="owaspChart" data-domains='{{ domain_breakdown|tojson }}'></canvas>
                 </article>
@@ -59,6 +66,21 @@
                 </article>
 
                 <article class="card full-width">
+                    <h2>Severity Distribution</h2>
+                    <canvas id="severityChart" data-severity='{{ hybrid_metrics.severity_distribution|tojson }}'></canvas>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Vulnerability Heatmap</h2>
+                    <canvas id="heatmapChart" data-heatmap='{{ hybrid_metrics.severity_heatmap|tojson }}'></canvas>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Confidence Aggregation</h2>
+                    <canvas id="confidenceChart" data-confidence='{{ hybrid_metrics.confidence_aggregation|tojson }}'></canvas>
+                </article>
+
+                <article class="card full-width">
                     <h2>Unified Vulnerability List</h2>
                     <div class="finding-list">
                         {% for finding in hybrid_findings %}
@@ -67,29 +89,13 @@
                                 <strong>{{ finding.vulnerability }}</strong>
                                 <span class="badge {{ finding.ml.severity|lower }}">{{ finding.ml.severity }}</span>
                             </div>
-                            <p><strong>Scanners:</strong> {{ finding.scanner }} | <strong>Endpoint:</strong> {{ finding.endpoint }}</p>
-                            <p class="muted">OWASP: {{ finding.owasp_category }} • Confidence {{ (finding.confidence * 100) | round(1) }}% • Priority {{ finding.ml.priority }}</p>
-                            <p class="muted">Risk {{ finding.risk.risk }} ({{ finding.risk.severity }}) | Consensus {{ finding.risk.consensus_factor }}</p>
+                            <p><strong>Scanners:</strong> {{ finding.scanner_sources|join(', ') }} | <strong>Endpoint:</strong> {{ finding.endpoint }}</p>
+                            <p class="muted">OWASP: {{ finding.owasp_category }} • Consensus {{ finding.consensus_score }} • Priority {{ finding.ml.priority }}</p>
+                            <p class="muted">Risk {{ finding.risk.cvss_score }}/10 ({{ finding.risk.severity }}) | FP Probability {{ finding.ml.false_positive_probability }}</p>
+                            <p class="muted">Mapped CVEs: {{ finding.intel.cve_ids|join(', ') if finding.intel.cve_ids else 'None' }}</p>
                         </div>
                         {% else %}
                         <p class="muted">No hybrid findings were returned. Ensure ZAP/Nikto/Burp services are reachable.</p>
-                        {% endfor %}
-                    </div>
-                </article>
-
-                <article class="card full-width">
-                    <h2>Structured Findings + Evidence Summary</h2>
-                    <div class="finding-list">
-                        {% for finding in owasp_findings %}
-                        <div class="finding-item">
-                            <div class="finding-row">
-                                <strong>{{ finding.domain }}</strong>
-                                <span class="badge {{ finding.severity|lower }}">{{ finding.severity }}</span>
-                            </div>
-                            <p>{{ finding.summary }}</p>
-                            <p class="muted">Weighted Risk = {{ finding.risk_output.weighted_risk }} • Confidence {{ finding.confidence }}%</p>
-                            <p class="muted">Equation: {{ finding.risk_equation }}</p>
-                        </div>
                         {% endfor %}
                     </div>
                 </article>

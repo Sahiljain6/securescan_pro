@@ -1,29 +1,41 @@
-# SecureScan Pro v6 — Hybrid Multi-Scanner Vulnerability Assessment Platform
+# SecureScan Pro v6 — Hybrid Multi-Scanner Security Intelligence Platform
 
-SecureScan Pro v6 redesigns the previous OWASP-only engine into a **hybrid orchestration and analysis layer** that combines scanner telemetry from OWASP ZAP, Nikto, and Burp Suite.
+SecureScan Pro v6 evolves the original OWASP-only analyzer into a **hybrid orchestration platform** that coordinates industry scanners, enriches evidence with threat intelligence APIs, and applies machine learning for triage confidence.
 
-## Updated System Architecture
+## 1) Updated System Architecture
 
 ```text
-Target Website
-      ↓
-SecureScan Recon Engine
-      ↓
-Multi-Scanner Layer
-   • OWASP ZAP API
-   • Nikto CLI
-   • Burp Suite API/Proxy
-      ↓
-Unified Vulnerability Aggregation Engine
-      ↓
-Machine Learning Vulnerability Classifier
-      ↓
-Risk Scoring Engine
-      ↓
-Reporting & Visualization Dashboard
+Target Application
+      │
+      ├── Passive Recon + Baseline Response Engine
+      │
+      ├── Multi-Scanner Orchestration Layer
+      │      ├── OWASP ZAP (REST API)
+      │      ├── Nikto (CLI JSON mode)
+      │      └── Burp Suite (API/proxy ingestion)
+      │
+      ├── Unified Vulnerability Aggregation Engine
+      │      ├── De-duplication
+      │      ├── Name normalization
+      │      ├── OWASP category mapping
+      │      └── Scanner consensus scoring
+      │
+      ├── Threat Intelligence Enrichment
+      │      ├── NVD (CVE + CVSS)
+      │      ├── VirusTotal (domain reputation)
+      │      ├── SecurityHeaders (header grade)
+      │      └── Shodan (exposed services)
+      │
+      ├── ML Vulnerability Classifier
+      │      └── Severity + confidence + FP probability
+      │
+      ├── Advanced Risk Engine
+      │      └── CVSS-normalized (0–10)
+      │
+      └── Enterprise Dashboard + PDF reporting + Evaluation suite
 ```
 
-## Modular Project Structure
+## 2) Modular Python Project Structure
 
 ```text
 securescan_pro/
@@ -33,6 +45,11 @@ securescan_pro/
 │   ├── zap_scanner.py
 │   ├── nikto_scanner.py
 │   └── burp_scanner.py
+├── intel/
+│   ├── nvd_lookup.py
+│   ├── virustotal_lookup.py
+│   ├── security_headers.py
+│   └── shodan_lookup.py
 ├── engine/
 │   ├── vulnerability_aggregator.py
 │   └── risk_model.py
@@ -47,68 +64,93 @@ securescan_pro/
     └── charts.js
 ```
 
-## Scanner Integration Modules
+## 3) Scanner Integration
 
-- **ZAP** (`scanners/zap_scanner.py`): REST calls for spider, active scan, alert retrieval.
-- **Nikto** (`scanners/nikto_scanner.py`): subprocess execution + JSON parsing + normalized findings.
-- **Burp Suite** (`scanners/burp_scanner.py`): API/proxy ingestion of scan issues with confidence normalization.
+- **OWASP ZAP**: `ZAPScanner` uses spider + active scan via REST API and returns normalized findings.
+- **Nikto**: `NiktoScanner` executes Nikto with subprocess in JSON mode and normalizes outputs.
+- **Burp Suite**: `BurpScanner` ingests issues from an API/proxy endpoint and maps confidence levels.
 
-Each scanner emits standardized JSON findings:
+All scanners emit unified fields (`vulnerability`, `endpoint`, `severity`, `confidence`, `scanner`, `owasp_category`).
+
+## 4) Threat Intelligence Integrations
+
+- **NVD** (`intel/nvd_lookup.py`): keyword CVE lookup, CVE IDs, CVSS base score extraction.
+- **VirusTotal** (`intel/virustotal_lookup.py`): domain/URL reputation stats.
+- **SecurityHeaders** (`intel/security_headers.py`): header score/grade with missing headers.
+- **Shodan** (`intel/shodan_lookup.py`): internet-exposed ports/services and vulnerability hints.
+
+## 5) Unified Vulnerability Aggregation Algorithm
+
+`engine/vulnerability_aggregator.py` applies:
+
+1. Vulnerability name normalization (e.g., XSS aliases).
+2. Endpoint normalization and duplicate collapse.
+3. OWASP mapping.
+4. Scanner consensus computation.
+
+Output example:
 
 ```json
 {
   "vulnerability": "SQL Injection",
-  "scanner": "OWASP ZAP",
   "endpoint": "/login",
   "severity": "High",
-  "confidence": 0.82,
+  "scanner_sources": ["OWASP ZAP", "Nikto"],
+  "consensus_score": 0.82,
   "owasp_category": "Injection"
 }
 ```
 
-## Vulnerability Aggregation Algorithm
-
-`engine/vulnerability_aggregator.py` performs:
-
-1. Name normalization (`xss` → `Cross-Site Scripting`).
-2. OWASP category mapping.
-3. De-duplication by vulnerability + endpoint.
-4. Scanner consensus boost for confidence.
-
-## Machine Learning Vulnerability Classifier
+## 6) Machine Learning Vulnerability Classifier
 
 `ml/vulnerability_classifier.py` supports:
 
-- RandomForest classification (when `scikit-learn` is available).
-- Feature vector including scanner source count, vulnerability type, endpoint depth, response behavior signals, exploitability, and scanner confidence.
-- Rule-based fallback for constrained environments.
-- False-positive probability estimate and priority bucket (P1–P4).
+- `RandomForestClassifier` (default) or `GradientBoostingClassifier`.
+- Features: vulnerability type signal, scanner count, response behavior delta, scanner confidence, exploitability, mitigation presence, endpoint depth.
+- Outputs: `severity`, `model_confidence`, `false_positive_probability`, `priority`.
 
-## Improved Risk Scoring Framework
+## 7) Improved Risk Scoring Framework
 
 `engine/risk_model.py` implements:
 
-`Risk = (Exposure × Exploitability × Impact) × Scanner Consensus Factor × (1 − Mitigation Strength)`
+`Risk = (Exposure × Exploitability × Impact) × ScannerConsensusFactor × (1 − MitigationStrength)`
 
-Consensus increases confidence for multi-scanner corroboration.
+Results are normalized to CVSS scale `0–10` while preserving a normalized internal score.
 
-## Dashboard Enhancements
+## 8) Enterprise Dashboard Design
 
-`templates/result.html` and `static/charts.js` now include:
+`templates/result.html` + `static/charts.js` now visualize:
 
-- vulnerabilities by scanner,
+- severity distribution,
 - OWASP category breakdown,
+- scanner comparison,
+- vulnerability heatmap,
+- confidence aggregation,
 - unified vulnerability list,
-- aggregated confidence + ML severity/priority,
-- scanner status visibility.
+- threat intelligence snapshots.
 
-## Research Evaluation Methodology
+Uses Flask templates and Chart.js with responsive layout.
 
-`evaluation/benchmark.py` provides benchmark metrics for vulnerable targets (DVWA, Juice Shop):
+## 9) Research Evaluation Methodology
+
+`evaluation/benchmark.py` supports repeatable academic experiments on **DVWA** and **OWASP Juice Shop** using:
 
 - detection coverage,
 - false positive rate,
 - scanner agreement rate,
-- performance/runtime comparison.
+- hybrid-vs-individual scanner comparison.
 
-Use these outputs as publication-grade experiment tables.
+Suggested publication workflow:
+1. Run each scanner independently.
+2. Run hybrid orchestrator.
+3. Compare coverage/FP/agreement metrics over fixed datasets.
+4. Report statistical deltas and confidence intervals.
+
+## Environment Variables (Optional Integrations)
+
+- `NVD_API_KEY`
+- `VIRUSTOTAL_API_KEY`
+- `SECURITY_HEADERS_API_KEY`
+- `SHODAN_API_KEY`
+
+If absent, integrations degrade gracefully (`status: skipped` or `error`) without breaking core scanning.
