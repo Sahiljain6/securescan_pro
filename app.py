@@ -10,12 +10,7 @@ from dotenv import load_dotenv
 from flask import Flask, Response, abort, flash, jsonify, redirect, render_template, request, session, url_for
 from flask_sqlalchemy import SQLAlchemy
 
-from cvss import score_findings
-from owasp_scanner import run_owasp_scan
-from port_scanner import scan_ports
-from scanner import scan_url
 from hybrid_orchestrator import HybridVulnerabilityOrchestrator
-from ml_model import analyze_vulnerabilities
 
 load_dotenv()
 
@@ -146,37 +141,32 @@ def create_app() -> Flask:
                 flash("Enter a valid URL.", "error")
                 return redirect(url_for("dashboard"))
 
-            phishing_result, phishing_probability = scan_url(normalized)
-            owasp_scan = run_owasp_scan(normalized)
-            findings = owasp_scan["findings"]
-            cvss = score_findings(findings)
-            open_ports = scan_ports(normalized)
             hybrid_scan = hybrid_orchestrator.run(normalized)
+            report = hybrid_scan.get("json_report", {})
+            risk_score = float(report.get("risk_score", 0.0))
+            severity = report.get("severity", "Low")
 
             recommendations = [
-                "Validate and sanitize all input server-side and apply strict contextual output encoding.",
-                "Harden browser trust boundaries with CSP, X-Frame-Options, and strict transport security.",
-                "Implement anti-CSRF tokens and same-site cookie protections on all state-changing requests.",
-                "Continuously patch dependencies and externally exposed services identified in port scans.",
-                "Operationalize continuous monitoring with periodic authenticated and passive scanning cycles.",
+                "Deploy a strict Content-Security-Policy and complete all recommended browser security headers.",
+                "Close unnecessary exposed services and restrict management ports by IP allow-list.",
+                "Enforce modern TLS configuration with valid CA-signed certificates and TLS 1.2+ only.",
+                "Reduce redirect chains to a single canonical redirect and avoid untrusted redirect targets.",
             ]
 
             executive_summary = (
-                f"The target {normalized} was classified as {phishing_result} with a phishing probability of "
-                f"{round(phishing_probability * 100, 2)}%. The SecureScan Pro v5 OWASP Top 5 assessment produced {len(findings)} domain-level "
-                f"findings with an average confidence of {owasp_scan['confidence_average']}%. "
-                f"Overall weighted risk posture is {cvss['severity']} (CVSS {cvss['score']})."
+                f"Offline passive scanning completed for {normalized}. "
+                f"Calculated risk posture is {severity} with score {risk_score}/10 based on headers, TLS, redirects, and open ports."
             )
 
             db.session.add(
                 ScanRecord(
                     username=session.get("username", "analyst"),
                     url=normalized,
-                    phishing_result=phishing_result,
-                    phishing_probability=phishing_probability,
-                    cvss_score=cvss["score"],
-                    cvss_severity=cvss["severity"],
-                    confidence_avg=owasp_scan["confidence_average"],
+                    phishing_result=severity,
+                    phishing_probability=min(1.0, risk_score / 10),
+                    cvss_score=risk_score,
+                    cvss_severity=severity,
+                    confidence_avg=round(hybrid_scan.get("scanner_ml_summary", {}).get("score", risk_score) * 10, 2),
                 )
             )
             db.session.commit()
@@ -185,22 +175,25 @@ def create_app() -> Flask:
             result_payload = {
                 "url": normalized,
                 "timestamp": timestamp,
-                "phishing_result": phishing_result,
-                "phishing_probability": round(phishing_probability * 100, 2),
-                "owasp_findings": findings,
-                "owasp_stages": owasp_scan["stages"],
-                "domain_breakdown": owasp_scan["domain_breakdown"],
-                "confidence_average": owasp_scan["confidence_average"],
-                "cvss_score": cvss["score"],
-                "cvss_severity": cvss["severity"],
-                "cvss_method": cvss["method"],
-                "open_ports": open_ports,
+                "phishing_result": severity,
+                "phishing_probability": round(min(100.0, risk_score * 10), 2),
+                "owasp_findings": hybrid_scan["findings"],
+                "owasp_stages": [],
+                "domain_breakdown": [
+                    {"domain": "Headers", "risk": max(0.0, (10 - report.get("risk_score", 0)) / 10), "confidence": 90},
+                    {"domain": "Transport", "risk": min(1.0, report.get("risk_score", 0) / 10), "confidence": 85},
+                ],
+                "confidence_average": round(hybrid_scan.get("scanner_ml_summary", {}).get("score", risk_score) * 10, 2),
+                "cvss_score": risk_score,
+                "cvss_severity": severity,
+                "cvss_method": "Offline passive risk normalization",
+                "open_ports": report.get("open_ports", []),
                 "executive_summary": executive_summary,
                 "recommendations": recommendations,
-                "framework": owasp_scan.get("framework", "SecureScan Pro v5"),
-                "scan_model": owasp_scan.get("scan_model", "Defensive-only passive behavioral validation"),
-                "risk_model": owasp_scan.get("risk_model"),
-                "limitations": owasp_scan.get("limitations", []),
+                "framework": "SecureScan Pro Offline Engine",
+                "scan_model": "Passive-only local Python scanners without external APIs",
+                "risk_model": "(10-header_score)*open_ports*redirect_count*tls_issues normalized to 0-10",
+                "limitations": ["Passive scan only; no active exploitation performed."],
                 "hybrid_findings": hybrid_scan["findings"],
                 "hybrid_metrics": hybrid_scan["metrics"],
                 "hybrid_architecture": hybrid_scan["architecture"],
@@ -208,7 +201,7 @@ def create_app() -> Flask:
                 "threat_intel": hybrid_scan.get("threat_intel", {}),
                 "dashboard_data": hybrid_scan.get("dashboard_data", {}),
                 "ai_analysis": hybrid_scan.get("ai_analysis", {}),
-                "json_report": hybrid_scan.get("json_report", {}),
+                "json_report": report,
                 "scanner_ml_summary": hybrid_scan.get("scanner_ml_summary", {}),
             }
             session["last_scan"] = result_payload
@@ -228,18 +221,16 @@ def create_app() -> Flask:
 
         hybrid_scan = hybrid_orchestrator.run(normalized)
         report = hybrid_scan.get("json_report", {})
-        ai_module_output = analyze_vulnerabilities(report.get("vulnerabilities", hybrid_scan.get("findings", [])))
         return jsonify(
             {
-                "vulnerabilities": report.get("vulnerabilities", hybrid_scan.get("findings", [])),
-                "severity_distribution": report.get("severity_distribution", {}),
-                "owasp_categories": report.get("owasp_categories", {}),
                 "risk_score": report.get("risk_score", 0),
-                "ai_analysis": report.get("ai_analysis", hybrid_scan.get("ai_analysis", {})),
-                "ml_model_ai_analysis": ai_module_output,
+                "severity": report.get("severity", "Low"),
+                "missing_headers": report.get("missing_headers", []),
+                "open_ports": report.get("open_ports", []),
+                "tls_status": report.get("tls_status", "unknown"),
+                "redirects": report.get("redirects", 0),
                 "target": normalized,
                 "scanner_status": hybrid_scan.get("scanner_status", {}),
-                "threat_intel": hybrid_scan.get("threat_intel", {}),
                 "dashboard_data": hybrid_scan.get("dashboard_data", {}),
                 "scanner_ml_summary": hybrid_scan.get("scanner_ml_summary", {}),
             }
@@ -262,10 +253,12 @@ def create_app() -> Flask:
         payload = session.get("last_scan") or {}
         dashboard_data = payload.get("dashboard_data") or {
             "vulnerabilities": [],
-            "severity_distribution": {"Informational": 1},
-            "scanner_comparison": {"No Findings": 1},
-            "owasp_categories": {"No OWASP Mapping": 1},
-            "heatmap": {"No Data::Informational": 1},
+            "severity_distribution": {"Low": 1},
+            "missing_headers": {"None Missing": 1},
+            "open_ports": {"No Open Ports": 1},
+            "scanner_comparison": {"Offline Passive Engine": 1},
+            "owasp_categories": {"Security Misconfiguration": 1},
+            "heatmap": {"Passive::Low": 1},
             "risk_score": 0,
             "message": "Run a scan to populate analytics.",
         }
